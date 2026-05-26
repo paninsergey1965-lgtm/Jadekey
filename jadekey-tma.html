@@ -6,593 +6,639 @@
 <title>JadeKey</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@300;400&display=swap');
-  :root{--jade:#4a7c6f;--jade-light:#6aab9a;--jade-dark:#2d4f46;--stone:#1a1a18;--stone-mid:#242420;--stone-light:#2e2e2a;--cream:#e8e4d8;--cream-dim:#a09a8a;--gold:#c4a96a;--gold-dim:#7a6840;--red:#c45a4a;--gap:16px;}
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  body{background:var(--stone);color:var(--cream);font-family:'Cormorant Garamond',Georgia,serif;min-height:100vh;overflow-x:hidden;}
-  .header{display:flex;align-items:center;justify-content:space-between;padding:18px var(--gap) 14px;border-bottom:1px solid rgba(74,124,111,0.25);position:sticky;top:0;z-index:100;background:rgba(26,26,24,0.95);backdrop-filter:blur(12px);}
-  .logo{font-size:22px;font-weight:300;letter-spacing:0.18em;color:var(--jade-light);}
-  .logo span{color:var(--gold);font-style:italic;}
-  .header-right{display:flex;align-items:center;gap:10px;}
-  .db-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cream-dim);}
-  .admin-badge{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);border:1px solid rgba(196,169,106,0.4);padding:2px 7px;border-radius:10px;}
-  .cloud-indicator{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--jade-light);display:flex;align-items:center;gap:4px;}
-  .cloud-dot{width:6px;height:6px;border-radius:50%;background:var(--jade-light);animation:pulse 2s infinite;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-  .tabs{display:flex;border-bottom:1px solid rgba(74,124,111,0.2);background:var(--stone-mid);}
-  .tab{flex:1;padding:12px 8px;text-align:center;font-size:13px;letter-spacing:0.1em;color:var(--cream-dim);cursor:pointer;transition:all 0.2s;border-bottom:2px solid transparent;}
-  .tab.active{color:var(--jade-light);border-bottom-color:var(--jade);background:rgba(74,124,111,0.06);}
-  .tab.hidden{display:none;}
-  .screen{display:none;padding:var(--gap);animation:fadeIn 0.25s ease;}
-  .screen.active{display:block;}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .camera-wrap{position:relative;width:100%;aspect-ratio:1;border-radius:4px;overflow:hidden;background:var(--stone-light);border:1px solid rgba(74,124,111,0.3);margin-bottom:var(--gap);}
-  #videoEl,#canvasEl{width:100%;height:100%;object-fit:cover;display:block;}
-  #canvasEl{display:none;position:absolute;top:0;left:0;}
-  .camera-overlay{position:absolute;inset:0;pointer-events:none;}
-  .corner{position:absolute;width:28px;height:28px;border-color:var(--jade-light);border-style:solid;opacity:0.7;}
-  .corner.tl{top:12px;left:12px;border-width:2px 0 0 2px;}.corner.tr{top:12px;right:12px;border-width:2px 2px 0 0;}
-  .corner.bl{bottom:12px;left:12px;border-width:0 0 2px 2px;}.corner.br{bottom:12px;right:12px;border-width:0 2px 2px 0;}
-  .scan-line{position:absolute;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,var(--jade-light),transparent);top:12px;animation:scanMove 2.5s ease-in-out infinite;opacity:0;transition:opacity 0.3s;}
-  .scanning .scan-line{opacity:0.8;}
-  @keyframes scanMove{0%,100%{top:12%}50%{top:85%}}
-  .camera-hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(106,171,154,0.6);letter-spacing:0.08em;}
-  .btn{width:100%;padding:14px;border:none;border-radius:3px;font-family:'Cormorant Garamond',serif;font-size:16px;letter-spacing:0.12em;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
-  .btn-primary{background:var(--jade);color:var(--cream);}
-  .btn-primary:active{background:var(--jade-dark);transform:scale(0.98);}
-  .btn-primary:disabled{background:var(--stone-light);color:var(--cream-dim);cursor:default;}
-  .btn-secondary{background:transparent;color:var(--jade-light);border:1px solid rgba(74,124,111,0.4);}
-  .btn-secondary:active{background:rgba(74,124,111,0.1);}
-  .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(196,90,74,0.3);font-size:13px;padding:10px;}
-  .btn-row{display:flex;gap:10px;}.btn-row .btn{flex:1;}
-  .result-card{background:var(--stone-mid);border:1px solid rgba(74,124,111,0.25);border-radius:4px;padding:var(--gap);margin-top:var(--gap);animation:fadeIn 0.35s ease;}
-  .result-card.no-match{border-color:rgba(196,90,74,0.3);}
-  .match-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;}
-  .match-thumb{width:72px;height:72px;border-radius:3px;object-fit:cover;border:1px solid rgba(74,124,111,0.3);flex-shrink:0;}
-  .match-thumb-placeholder{width:72px;height:72px;border-radius:3px;background:var(--stone-light);border:1px solid rgba(74,124,111,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;}
-  .match-info{flex:1;min-width:0;}
-  .match-name{font-size:20px;font-weight:600;color:var(--cream);margin-bottom:4px;}
-  .match-score{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--jade-light);margin-bottom:6px;}
-  .match-desc{font-size:14px;color:var(--cream-dim);line-height:1.5;font-style:italic;}
-  .score-bar{height:3px;background:var(--stone-light);border-radius:2px;margin:12px 0;overflow:hidden;}
-  .score-fill{height:100%;border-radius:2px;transition:width 0.6s ease;}
-  .contact-btn{display:flex;align-items:center;gap:12px;padding:13px var(--gap);background:rgba(74,124,111,0.12);border:1px solid rgba(74,124,111,0.3);border-radius:3px;color:var(--cream);text-decoration:none;font-family:'Cormorant Garamond',serif;font-size:16px;cursor:pointer;transition:all 0.2s;width:100%;}
-  .contact-btn:active{background:rgba(74,124,111,0.22);}
-  .contact-icon{font-size:20px;flex-shrink:0;}
-  .contact-label{flex:1;}
-  .contact-sublabel{font-size:12px;color:var(--cream-dim);font-family:'JetBrains Mono',monospace;letter-spacing:0.04em;}
-  .no-match-msg{text-align:center;padding:20px 0 8px;}
-  .no-match-msg .icon{font-size:36px;margin-bottom:10px;}
-  .no-match-msg h3{font-size:18px;color:var(--cream-dim);font-weight:300;}
-  .no-match-msg p{font-size:13px;color:var(--cream-dim);margin-top:6px;opacity:0.6;}
-  .ds-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-  .ds-title{font-size:18px;font-weight:300;letter-spacing:0.08em;}
-  .ds-add-btn{width:auto;padding:9px 18px;font-size:14px;background:var(--jade);color:var(--cream);border-radius:3px;border:none;cursor:pointer;font-family:'Cormorant Garamond',serif;letter-spacing:0.08em;}
-  .stone-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-  .stone-card{background:var(--stone-mid);border:1px solid rgba(74,124,111,0.2);border-radius:4px;overflow:hidden;cursor:pointer;transition:border-color 0.2s;}
-  .stone-card:active{border-color:rgba(74,124,111,0.6);}
-  .stone-img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--stone-light);}
-  .stone-img-placeholder{width:100%;aspect-ratio:1;background:var(--stone-light);display:flex;align-items:center;justify-content:center;font-size:36px;}
-  .stone-meta{padding:8px 10px;}
-  .stone-meta-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .stone-meta-link{font-size:11px;color:var(--cream-dim);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .empty-ds{text-align:center;padding:48px 0;color:var(--cream-dim);}
-  .empty-ds .icon{font-size:48px;margin-bottom:14px;opacity:0.4;}
-  .empty-ds p{font-size:15px;font-style:italic;}
-  .admin-login{max-width:340px;margin:60px auto;text-align:center;}
-  .admin-login h2{font-size:24px;font-weight:300;letter-spacing:0.12em;color:var(--jade-light);margin-bottom:8px;}
-  .admin-login p{font-size:14px;color:var(--cream-dim);margin-bottom:28px;font-style:italic;}
-  .modal-overlay{position:fixed;inset:0;background:rgba(10,10,8,0.88);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:overlayIn 0.2s ease;}
-  @keyframes overlayIn{from{opacity:0}to{opacity:1}}
-  .modal{background:var(--stone-mid);border:1px solid rgba(74,124,111,0.3);border-radius:8px 8px 0 0;padding:20px var(--gap) 32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:modalUp 0.25s ease;}
-  @keyframes modalUp{from{transform:translateY(40px)}to{transform:none}}
-  .modal-title{font-size:20px;font-weight:300;letter-spacing:0.1em;margin-bottom:18px;color:var(--jade-light);}
-  .modal-close{float:right;background:none;border:none;color:var(--cream-dim);font-size:22px;cursor:pointer;margin-top:-4px;}
-  .form-group{margin-bottom:14px;}
-  .form-label{display:block;font-size:12px;letter-spacing:0.1em;color:var(--cream-dim);margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
-  .form-input{width:100%;padding:11px 13px;background:var(--stone-light);border:1px solid rgba(74,124,111,0.25);border-radius:3px;color:var(--cream);font-family:'Cormorant Garamond',serif;font-size:16px;outline:none;transition:border-color 0.2s;}
-  .form-input:focus{border-color:var(--jade);}
-  .form-input::placeholder{color:var(--cream-dim);opacity:0.4;}
-  .link-type-select{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-  .link-type-btn{padding:7px 14px;border-radius:20px;border:1px solid rgba(74,124,111,0.3);background:transparent;color:var(--cream-dim);font-size:13px;cursor:pointer;font-family:'Cormorant Garamond',serif;transition:all 0.2s;}
-  .link-type-btn.active{background:var(--jade);color:var(--cream);border-color:var(--jade);}
-  .photo-preview-wrap{position:relative;width:100%;aspect-ratio:1;border-radius:4px;overflow:hidden;background:var(--stone-light);border:1px dashed rgba(74,124,111,0.3);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;}
-  .photo-preview-wrap img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
-  .photo-placeholder{color:var(--cream-dim);font-size:13px;letter-spacing:0.06em;opacity:0.5;}
-  .status-bar{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--jade-light);text-align:center;padding:8px;letter-spacing:0.06em;min-height:28px;}
-  .detail-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;border:1px solid rgba(74,124,111,0.2);margin-bottom:14px;}
-  .detail-name{font-size:24px;font-weight:600;margin-bottom:6px;}
-  .detail-desc{font-size:15px;color:var(--cream-dim);font-style:italic;margin-bottom:14px;line-height:1.5;}
-  .detail-hash{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold-dim);letter-spacing:0.04em;margin-bottom:14px;word-break:break-all;}
-  .saving-overlay{position:fixed;inset:0;background:rgba(10,10,8,0.7);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
-  .saving-text{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--jade-light);letter-spacing:0.08em;}
-  .loading-spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(106,171,154,0.3);border-top-color:var(--jade-light);border-radius:50%;animation:spin 0.8s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  input[type=file]{display:none;}
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Tenor+Sans&display=swap');
+:root{--black:#0a0a0a;--black2:#111110;--black3:#1a1a18;--surface:#161614;--border:rgba(255,255,255,0.07);--border-b:rgba(255,255,255,0.14);--gold:#b8975a;--gold-l:#d4b078;--gold-d:rgba(184,151,90,0.3);--white:#f0ede6;--white-d:rgba(240,237,230,0.45);--white-f:rgba(240,237,230,0.18);--green:#5d9988;--gap:20px;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--black);color:var(--white);font-family:'Tenor Sans',sans-serif;overflow-x:hidden;}
+.header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px var(--gap);background:rgba(10,10,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+.logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;letter-spacing:0.22em;}
+.logo em{font-style:italic;color:var(--gold);}
+.header-meta{display:flex;align-items:center;gap:12px;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 3s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.meta{font-size:10px;letter-spacing:0.15em;color:var(--white-d);text-transform:uppercase;}
+.owner-pill{font-size:9px;letter-spacing:0.2em;color:var(--gold);border:1px solid var(--gold-d);padding:3px 8px;border-radius:20px;}
+.tabs{display:flex;background:var(--black2);border-bottom:1px solid var(--border);}
+.tab{flex:1;padding:14px 8px;text-align:center;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--white-d);cursor:pointer;transition:color 0.3s;position:relative;}
+.tab.active{color:var(--white);}
+.tab.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.tab.hidden{display:none;}
+.screen{display:none;}.screen.active{display:block;animation:rev 0.35s ease;}
+@keyframes rev{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.vf{position:relative;width:100%;aspect-ratio:1;border-radius:4px;overflow:hidden;background:var(--black3);margin-bottom:20px;}
+#videoEl,#canvasEl{width:100%;height:100%;object-fit:cover;display:block;}
+#canvasEl{display:none;position:absolute;inset:0;}
+.vf-vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.55) 100%);pointer-events:none;}
+.vf-ui{position:absolute;inset:0;pointer-events:none;}
+.corner{position:absolute;width:24px;height:24px;border-color:var(--gold);border-style:solid;opacity:0.55;}
+.corner.tl{top:16px;left:16px;border-width:1px 0 0 1px;}.corner.tr{top:16px;right:16px;border-width:1px 1px 0 0;}
+.corner.bl{bottom:16px;left:16px;border-width:0 0 1px 1px;}.corner.br{bottom:16px;right:16px;border-width:0 1px 1px 0;}
+.reticle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border:1px solid rgba(184,151,90,0.2);border-radius:50%;}
+.scanline{position:absolute;left:16px;right:16px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-l),transparent);top:16px;animation:scan 3s ease-in-out infinite;opacity:0;transition:opacity 0.4s;}
+.scanning .scanline{opacity:0.7;}
+@keyframes scan{0%,100%{top:10%}50%{top:88%}}
+.vf-hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(184,151,90,0.5);}
+.scan-status{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--green);text-align:center;min-height:22px;margin-bottom:16px;}
+.ctrls{display:flex;gap:10px;margin-bottom:12px;}
+.ctrl{flex:1;padding:14px;background:transparent;border:1px solid var(--border-b);border-radius:2px;color:var(--white-d);font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.ctrl:active{background:var(--white-f);color:var(--white);}
+.scan-btn{width:100%;padding:18px;background:linear-gradient(135deg,var(--gold) 0%,#8b6d35 100%);border:none;border-radius:2px;color:var(--black);font-family:'Playfair Display',serif;font-size:15px;letter-spacing:0.22em;cursor:pointer;transition:opacity 0.2s;}
+.scan-btn:disabled{background:var(--surface);color:var(--white-f);border:1px solid var(--border);}
+.scan-btn:not(:disabled):active{opacity:0.85;}
+.result-card{background:var(--surface);border:1px solid var(--border-b);border-radius:4px;overflow:hidden;margin-top:24px;animation:rev 0.4s ease;}
+.result-card.match{border-color:rgba(184,151,90,0.3);}
+.result-card.no-match{border-color:rgba(139,58,58,0.3);}
+.res-img{width:100%;height:150px;object-fit:cover;display:block;filter:brightness(0.85);}
+.res-body{padding:20px;}
+.res-pct-row{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+.res-pct{font-family:'Playfair Display',serif;font-size:36px;color:var(--gold-l);line-height:1;}
+.res-lbl{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--white-d);}
+.res-bar{height:1px;background:var(--border);margin-bottom:16px;position:relative;overflow:hidden;}
+.res-bar-fill{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-l));transition:width 0.8s cubic-bezier(0.16,1,0.3,1);}
+.res-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;margin-bottom:6px;}
+.res-desc{font-size:13px;color:var(--white-d);line-height:1.6;font-style:italic;margin-bottom:20px;}
+.res-hash{font-size:9px;letter-spacing:0.1em;color:rgba(184,151,90,0.3);margin-bottom:20px;word-break:break-all;}
+.clink{display:flex;align-items:center;gap:14px;padding:16px;background:rgba(184,151,90,0.06);border:1px solid rgba(184,151,90,0.2);border-radius:2px;color:var(--white);text-decoration:none;transition:all 0.2s;}
+.clink:active{background:rgba(184,151,90,0.12);}
+.clink-ico{width:36px;height:36px;border:1px solid rgba(184,151,90,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.clink-main{font-size:13px;letter-spacing:0.08em;margin-bottom:2px;}
+.clink-sub{font-size:10px;color:var(--white-d);}
+.nav-hint{font-size:10px;letter-spacing:0.12em;color:var(--white-f);margin-top:10px;text-align:center;}
+.no-match-inner{padding:32px 20px;text-align:center;}
+.no-match-g{font-family:'Playfair Display',serif;font-size:40px;color:var(--white-f);margin-bottom:12px;}
+.no-match-t{font-family:'Playfair Display',serif;font-size:18px;color:var(--white-d);font-weight:400;margin-bottom:6px;}
+.no-match-s{font-size:11px;color:var(--white-f);letter-spacing:0.1em;}
+.ds-hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.ds-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;}
+.ds-cnt{font-size:10px;letter-spacing:0.15em;color:var(--white-d);margin-top:4px;}
+.add-btn{padding:10px 18px;background:transparent;border:1px solid rgba(184,151,90,0.4);border-radius:2px;color:var(--gold-l);font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;}
+.add-btn:active{background:rgba(184,151,90,0.08);}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:pointer;}
+.tile:active{border-color:var(--border-b);}
+.tile-img{width:100%;aspect-ratio:1;object-fit:cover;display:block;filter:brightness(0.9);}
+.tile-ph{width:100%;aspect-ratio:1;background:var(--black3);display:flex;align-items:center;justify-content:center;font-size:32px;opacity:0.2;color:var(--gold);}
+.tile-info{padding:10px 12px;}
+.tile-name{font-size:13px;font-family:'Playfair Display',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
+.tile-link{font-size:9px;letter-spacing:0.1em;color:var(--white-f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.empty{text-align:center;padding:60px 20px;display:none;}
+.empty-g{font-family:'Playfair Display',serif;font-size:48px;color:var(--white-f);margin-bottom:16px;}
+.empty-t{font-size:13px;color:var(--white-f);font-style:italic;}
+.login-wrap{max-width:320px;margin:48px auto;}
+.login-eye{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+.login-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:6px;}
+.login-sub{font-size:12px;color:var(--white-d);margin-bottom:32px;line-height:1.5;}
+.lbl{display:block;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--white-d);margin-bottom:8px;}
+.inp{width:100%;padding:14px 16px;background:var(--surface);border:1px solid var(--border-b);border-radius:2px;color:var(--white);font-family:'Tenor Sans',sans-serif;font-size:15px;outline:none;transition:border-color 0.25s;margin-bottom:20px;}
+.inp:focus{border-color:rgba(184,151,90,0.5);}
+.inp::placeholder{color:var(--white-f);}
+.login-err{font-size:11px;color:#c47070;margin-top:-12px;margin-bottom:16px;display:none;}
+.panel-card{background:var(--surface);border:1px solid rgba(184,151,90,0.2);border-radius:4px;padding:24px;text-align:center;margin-bottom:16px;}
+.panel-g{font-size:36px;color:var(--gold);margin-bottom:12px;}
+.panel-t{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;margin-bottom:6px;}
+.panel-s{font-size:11px;color:var(--white-d);}
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;animation:ov 0.2s ease;}
+@keyframes ov{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--black2);border:1px solid var(--border-b);border-bottom:none;border-radius:12px 12px 0 0;padding:24px var(--gap) 40px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;animation:su 0.3s cubic-bezier(0.16,1,0.3,1);}
+@keyframes su{from{transform:translateY(60px)}to{transform:none}}
+.handle{width:36px;height:3px;background:var(--border-b);border-radius:2px;margin:0 auto 24px;}
+.sheet-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;margin-bottom:24px;color:var(--gold-l);}
+.photo-drop{width:100%;aspect-ratio:1;background:var(--surface);border:1px dashed rgba(184,151,90,0.25);border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:20px;position:relative;overflow:hidden;}
+.photo-drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.drop-ico{font-size:28px;opacity:0.3;}
+.drop-txt{font-size:11px;letter-spacing:0.12em;color:var(--white-f);}
+.lt-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.lt-btn{padding:7px 14px;border-radius:20px;border:1px solid var(--border-b);background:transparent;color:var(--white-d);font-size:12px;cursor:pointer;font-family:'Tenor Sans',sans-serif;transition:all 0.2s;}
+.lt-btn.active{background:rgba(184,151,90,0.15);border-color:rgba(184,151,90,0.5);color:var(--gold-l);}
+.prim-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--gold) 0%,#8b6d35 100%);border:none;border-radius:2px;color:var(--black);font-family:'Playfair Display',serif;font-size:15px;letter-spacing:0.15em;cursor:pointer;margin-top:8px;}
+.prim-btn:active{opacity:0.85;}
+.ghost-btn{width:100%;padding:14px;background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--white-d);font-family:'Tenor Sans',sans-serif;font-size:12px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:10px;}
+.ghost-btn:active{background:var(--white-f);}
+.danger-btn{width:100%;padding:12px;background:transparent;border:1px solid rgba(139,58,58,0.35);border-radius:2px;color:#c47070;font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:10px;}
+.saving-veil{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.ring{width:36px;height:36px;border:2px solid rgba(184,151,90,0.2);border-top-color:var(--gold-l);border-radius:50%;animation:spin 0.9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.saving-lbl{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);}
+input[type=file]{display:none;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="logo">Jade<span>Key</span></div>
-  <div class="header-right">
-    <div class="cloud-indicator"><div class="cloud-dot"></div><span id="cloudStatus">подключение</span></div>
-    <div class="db-count" id="dbCount">0 камней</div>
-    <div class="admin-badge" id="adminBadge" style="display:none">ADMIN</div>
+  <div class="logo">Jade<em>Key</em></div>
+  <div class="header-meta">
+    <div class="dot"></div>
+    <span class="meta" id="metaText">загрузка</span>
+    <span class="owner-pill" id="ownerPill" style="display:none">OWNER</span>
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('scan')">◎ Сканировать</div>
-  <div class="tab hidden" id="tabDataset" onclick="switchTab('dataset')">⬡ Коллекция</div>
-  <div class="tab" id="tabAdmin" onclick="switchTab('admin')">⚙ Вход</div>
+  <div class="tab active" id="tabScan" onclick="switchTab('scan')">Идентификация</div>
+  <div class="tab hidden" id="tabCol" onclick="switchTab('dataset')">Коллекция</div>
+  <div class="tab" id="tabAdm" onclick="switchTab('admin')">Вход</div>
 </div>
 
 <div class="screen active" id="screen-scan">
-  <div class="camera-wrap" id="cameraWrap">
-    <video id="videoEl" autoplay playsinline muted></video>
-    <canvas id="canvasEl"></canvas>
-    <div class="camera-overlay">
-      <div class="corner tl"></div><div class="corner tr"></div>
-      <div class="corner bl"></div><div class="corner br"></div>
-      <div class="scan-line"></div>
-      <div class="camera-hint" id="cameraHint">нажмите «сканировать»</div>
+  <div style="padding:var(--gap)">
+    <div class="vf" id="vf">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="canvasEl"></canvas>
+      <div class="vf-vig"></div>
+      <div class="vf-ui">
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="reticle"></div>
+        <div class="scanline"></div>
+        <div class="vf-hint" id="vfHint">Поднесите камень</div>
+      </div>
     </div>
+    <div class="scan-status" id="scanSt"></div>
+    <div class="ctrls">
+      <button class="ctrl" onclick="startCam()">▶ Камера</button>
+      <button class="ctrl" onclick="document.getElementById('fileIn').click()">↑ Фото</button>
+    </div>
+    <input type="file" id="fileIn" accept="image/*" onchange="loadFile(event)">
+    <button class="scan-btn" id="scanBtn" onclick="doScan()" disabled>Идентифицировать</button>
+    <div id="resultArea"></div>
   </div>
-  <div class="status-bar" id="statusBar"></div>
-  <div class="btn-row" style="margin-bottom:10px">
-    <button class="btn btn-secondary" onclick="startCamera()">▶ Камера</button>
-    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">⬆ Фото</button>
-  </div>
-  <input type="file" id="fileInput" accept="image/*" onchange="loadFromFile(event)">
-  <button class="btn btn-primary" id="btnScan" onclick="doScan()" disabled>
-    <span id="btnScanLabel">Сканировать</span>
-  </button>
-  <div id="resultArea"></div>
 </div>
 
 <div class="screen" id="screen-dataset">
-  <div class="ds-header">
-    <div class="ds-title">Коллекция</div>
-    <button class="ds-add-btn" onclick="openAddModal()">+ Добавить</button>
-  </div>
-  <div class="stone-grid" id="stoneGrid"></div>
-  <div class="empty-ds" id="emptyDs" style="display:none">
-    <div class="icon">◇</div>
-    <p>Добавьте первый камень.</p>
+  <div style="padding:var(--gap)">
+    <div class="ds-hdr">
+      <div><div class="ds-title">Коллекция</div><div class="ds-cnt" id="dsCnt">0 образцов</div></div>
+      <button class="add-btn" onclick="openAdd()">+ Добавить</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="emptyEl"><div class="empty-g">◇</div><div class="empty-t">Добавьте первый образец.</div></div>
   </div>
 </div>
 
 <div class="screen" id="screen-admin">
-  <div id="adminLoginView">
-    <div class="admin-login">
-      <h2>Вход администратора</h2>
-      <p>Только владелец коллекции может добавлять камни</p>
-      <div class="form-group">
-        <label class="form-label">ПАРОЛЬ</label>
-        <input class="form-input" type="password" id="adminPassInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAdminLogin()">
-      </div>
-      <button class="btn btn-primary" onclick="doAdminLogin()" style="margin-top:8px">Войти</button>
-      <div id="loginError" style="color:var(--red);font-size:13px;text-align:center;margin-top:10px;display:none">Неверный пароль</div>
+  <div id="loginView">
+    <div class="login-wrap">
+      <div class="login-eye">Доступ</div>
+      <div class="login-title">Вход</div>
+      <div class="login-sub">Управление коллекцией доступно только владельцу.</div>
+      <label class="lbl">Пароль</label>
+      <input class="inp" type="password" id="passIn" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="login-err" id="loginErr">Неверный пароль</div>
+      <button class="prim-btn" onclick="doLogin()">Войти</button>
     </div>
   </div>
-  <div id="adminPanelView" style="display:none">
-    <div style="text-align:center;padding:20px 0">
-      <div style="font-size:32px;margin-bottom:10px">◈</div>
-      <div style="font-size:20px;letter-spacing:0.1em;color:var(--jade-light)">Режим администратора</div>
-      <div style="font-size:13px;color:var(--cream-dim);margin-top:6px;font-style:italic">Вы управляете общей базой</div>
+  <div id="panelView" style="display:none">
+    <div style="padding:var(--gap)">
+      <div class="panel-card"><div class="panel-g">◈</div><div class="panel-t">Режим владельца</div><div class="panel-s">Вы управляете общей базой</div></div>
+      <button class="ghost-btn" onclick="switchTab('dataset')">Открыть коллекцию</button>
+      <button class="danger-btn" onclick="doLogout()">Выйти</button>
     </div>
-    <button class="btn btn-secondary" onclick="switchTab('dataset')" style="margin-bottom:10px">Открыть коллекцию</button>
-    <button class="btn btn-danger" onclick="doAdminLogout()">Выйти</button>
   </div>
 </div>
 
-<!-- ADD MODAL -->
-<div class="modal-overlay" id="addModal" style="display:none" onclick="closeAddModal(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="closeAddModalDirect()">✕</button>
-    <div class="modal-title" id="modalTitle">Новый камень</div>
-    <div class="form-group">
-      <div class="photo-preview-wrap" onclick="document.getElementById('modalFileInput').click()">
-        <img id="modalPreviewImg" style="display:none">
-        <div class="photo-placeholder" id="modalPhotoPlaceholder">
-          <div style="font-size:32px;margin-bottom:4px">📷</div>
-          <div>Нажмите для фото</div>
-        </div>
-      </div>
-      <input type="file" id="modalFileInput" accept="image/*" onchange="onModalPhoto(event)">
+<!-- ADD SHEET -->
+<div class="overlay" id="addSheet" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="sheetTit">Новый образец</div>
+    <div class="photo-drop" onclick="document.getElementById('photoIn').click()">
+      <img id="photoPreview" style="display:none">
+      <div class="drop-ico" id="dropIco">◈</div>
+      <div class="drop-txt" id="dropTxt">Нажмите для фото</div>
     </div>
-    <div class="form-group">
-      <label class="form-label">НАЗВАНИЕ КАМНЯ</label>
-      <input class="form-input" id="stoneName" placeholder="напр. Нефрит зелёный #12">
+    <input type="file" id="photoIn" accept="image/*" onchange="onPhoto(event)">
+    <label class="lbl">Название</label>
+    <input class="inp" id="sName" placeholder="Нефрит зелёный №12">
+    <label class="lbl">Описание</label>
+    <input class="inp" id="sDesc" placeholder="Провенанс, характеристики...">
+    <label class="lbl">Тип контакта</label>
+    <div class="lt-wrap">
+      <button class="lt-btn active" onclick="setLt(this,'url')">🔗 Сайт</button>
+      <button class="lt-btn" onclick="setLt(this,'tg')">✈️ TG</button>
+      <button class="lt-btn" onclick="setLt(this,'email')">✉️ Email</button>
+      <button class="lt-btn" onclick="setLt(this,'phone')">📞 Тел.</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">ОПИСАНИЕ</label>
-      <input class="form-input" id="stoneDesc" placeholder="провенанс, характеристики...">
-    </div>
-    <div class="form-group">
-      <label class="form-label">ТИП КОНТАКТА</label>
-      <div class="link-type-select">
-        <button class="link-type-btn active" onclick="setLinkType(this,'url')">🔗 Сайт</button>
-        <button class="link-type-btn" onclick="setLinkType(this,'tg')">✈️ TG</button>
-        <button class="link-type-btn" onclick="setLinkType(this,'email')">✉️ Email</button>
-        <button class="link-type-btn" onclick="setLinkType(this,'phone')">📞 Тел.</button>
-        <button class="link-type-btn" onclick="setLinkType(this,'text')">📝 Текст</button>
-      </div>
-      <input class="form-input" id="stoneLink" placeholder="https://...">
-    </div>
-    <button class="btn btn-primary" onclick="saveStone()" style="margin-top:4px">Сохранить</button>
-    <button class="btn btn-danger" id="btnDeleteStone" style="margin-top:10px;display:none" onclick="deleteStone()">Удалить камень</button>
+    <input class="inp" id="sLink" placeholder="https://...">
+    <button class="prim-btn" onclick="saveStone()">Сохранить</button>
+    <button class="danger-btn" id="delBtn" style="display:none" onclick="deleteStone()">Удалить образец</button>
   </div>
 </div>
 
-<!-- DETAIL MODAL -->
-<div class="modal-overlay" id="detailModal" style="display:none" onclick="closeDetailModal(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="document.getElementById('detailModal').style.display='none'">✕</button>
-    <img id="detailImg" class="detail-img" style="display:none">
-    <div class="detail-name" id="detailName"></div>
-    <div class="detail-desc" id="detailDesc"></div>
-    <div class="detail-hash" id="detailHash"></div>
-    <a id="detailContactBtn" class="contact-btn" href="#" target="_blank">
-      <span class="contact-icon" id="detailContactIcon">🔗</span>
-      <span class="contact-label">
-        <div id="detailContactLabel">Перейти</div>
-        <div class="contact-sublabel" id="detailContactValue"></div>
-      </span>
+<!-- DETAIL SHEET -->
+<div class="overlay" id="detailSheet" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="sheet">
+    <div class="handle"></div>
+    <img id="dImg" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px;margin-bottom:20px;display:none">
+    <div style="font-family:'Playfair Display',serif;font-size:22px;margin-bottom:6px" id="dName"></div>
+    <div style="font-size:13px;color:var(--white-d);font-style:italic;margin-bottom:12px;line-height:1.6" id="dDesc"></div>
+    <div style="font-size:9px;letter-spacing:0.1em;color:rgba(184,151,90,0.3);margin-bottom:20px;word-break:break-all" id="dHash"></div>
+    <a id="dLink" class="clink" href="#" target="_blank">
+      <div class="clink-ico" id="dIco">🔗</div>
+      <div><div class="clink-main" id="dLbl">Перейти</div><div class="clink-sub" id="dSub"></div></div>
     </a>
-    <button class="btn btn-secondary" style="margin-top:10px;display:none" id="btnEditFromDetail" onclick="editFromDetail()">Редактировать</button>
+    <button class="ghost-btn" id="editBtn" style="display:none" onclick="editStone()">Редактировать</button>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-// ══ ВСТАВЬ СЮДА СВОИ ДАННЫЕ ══
-const firebaseConfig = {
-  apiKey: "AIzaSyCmc4qJFC0rkFvcz7ZBG42ApnZfCcrrT20",
-  authDomain: "jadekey-46f37.firebaseapp.com",
-  projectId: "jadekey-46f37",
-  storageBucket: "jadekey-46f37.firebasestorage.app",
-  messagingSenderId: "1081840003916",
-  appId: "1:1081840003916:web:c0fa7dd4004d09540d3de9",
-  measurementId: "G-V7BQL5B2HN"
-};
-// ════════════════════════════
-
-const ADMIN_PASSWORD = "jadekey2024"; // ← смени на свой пароль
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+<script>
+// ══ FIRESTORE REST API — no SDK needed ══
+const PROJECT = 'jadekey-46f37';
+const API_KEY = 'AIzaSyCmc4qJFC0rkFvcz7ZBG42ApnZfCcrrT20';
+const BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents';
+const ADMIN_PASSWORD = 'jadekey2024';
+const THRESHOLD = 0.80;
 
 let dataset = [];
 let isAdmin = false;
-let currentImageData = null;
+let imgData = null;
 let stream = null;
-let cameraActive = false;
-let currentLinkType = 'url';
-let editingId = null;
+let camActive = false;
+let ltType = 'url';
+let editId = null;
 let detailStone = null;
-let modalImageData = null;
+let modalImg = null;
 
-// ── ADMIN ──
-window.doAdminLogin = () => {
-  const pass = document.getElementById('adminPassInput').value;
-  if (pass === ADMIN_PASSWORD) {
-    isAdmin = true;
-    sessionStorage.setItem('jk_admin','1');
-    document.getElementById('adminLoginView').style.display='none';
-    document.getElementById('adminPanelView').style.display='block';
-    document.getElementById('adminBadge').style.display='block';
-    document.getElementById('tabDataset').classList.remove('hidden');
-    document.getElementById('tabAdmin').textContent='⚙ Админ';
-    document.getElementById('loginError').style.display='none';
-  } else {
-    document.getElementById('loginError').style.display='block';
+// ── FIRESTORE REST helpers ──
+function fsVal(v) {
+  if (v === null || v === undefined) return {nullValue: null};
+  if (typeof v === 'string') return {stringValue: v};
+  if (typeof v === 'number') return {doubleValue: v};
+  if (typeof v === 'boolean') return {booleanValue: v};
+  if (Array.isArray(v)) return {arrayValue: {values: v.map(fsVal)}};
+  if (typeof v === 'object') {
+    const fields = {};
+    for (const k in v) fields[k] = fsVal(v[k]);
+    return {mapValue: {fields}};
   }
-};
-
-window.doAdminLogout = () => {
-  isAdmin=false; sessionStorage.removeItem('jk_admin');
-  document.getElementById('adminLoginView').style.display='block';
-  document.getElementById('adminPanelView').style.display='none';
-  document.getElementById('adminBadge').style.display='none';
-  document.getElementById('tabDataset').classList.add('hidden');
-  document.getElementById('tabAdmin').textContent='⚙ Вход';
-  document.getElementById('adminPassInput').value='';
-  switchTab('scan');
-};
-
-if (sessionStorage.getItem('jk_admin')) {
-  isAdmin=true;
-  document.getElementById('adminBadge').style.display='block';
-  document.getElementById('tabDataset').classList.remove('hidden');
-  document.getElementById('tabAdmin').textContent='⚙ Админ';
-  document.getElementById('adminLoginView').style.display='none';
-  document.getElementById('adminPanelView').style.display='block';
+  return {stringValue: String(v)};
 }
 
-// ── FIRESTORE ──
-onSnapshot(collection(db,'stones'), snap => {
-  dataset = snap.docs.map(d=>({id:d.id,...d.data()}));
-  updateDbCount();
-  renderDataset();
-  document.getElementById('cloudStatus').textContent='онлайн';
-}, () => { document.getElementById('cloudStatus').textContent='ошибка'; });
+function fromFs(fields) {
+  if (!fields) return {};
+  const obj = {};
+  for (const k in fields) {
+    const v = fields[k];
+    if ('stringValue' in v) obj[k] = v.stringValue;
+    else if ('doubleValue' in v) obj[k] = v.doubleValue;
+    else if ('integerValue' in v) obj[k] = Number(v.integerValue);
+    else if ('booleanValue' in v) obj[k] = v.booleanValue;
+    else if ('nullValue' in v) obj[k] = null;
+    else if ('arrayValue' in v) obj[k] = (v.arrayValue.values || []).map(x => fromFs({_:x})['_']);
+    else if ('mapValue' in v) obj[k] = fromFs(v.mapValue.fields || {});
+  }
+  return obj;
+}
+
+function toFsFields(obj) {
+  const fields = {};
+  for (const k in obj) fields[k] = fsVal(obj[k]);
+  return fields;
+}
+
+async function fsGet() {
+  try {
+    const r = await fetch(BASE + '/stones?key=' + API_KEY + '&pageSize=50');
+    const json = await r.json();
+    if (!json.documents) return [];
+    return json.documents.map(d => {
+      const id = d.name.split('/').pop();
+      return {id, ...fromFs(d.fields)};
+    });
+  } catch(e) { return []; }
+}
+
+async function fsAdd(data) {
+  const body = {fields: toFsFields(data)};
+  const r = await fetch(BASE + '/stones?key=' + API_KEY, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  return await r.json();
+}
+
+async function fsUpdate(id, data) {
+  const fields = toFsFields(data);
+  const updateMask = Object.keys(data).map(k => 'updateMask.fieldPaths=' + k).join('&');
+  const r = await fetch(BASE + '/stones/' + id + '?' + updateMask + '&key=' + API_KEY, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({fields})
+  });
+  return await r.json();
+}
+
+async function fsDelete(id) {
+  await fetch(BASE + '/stones/' + id + '?key=' + API_KEY, {method: 'DELETE'});
+}
+
+async function loadData() {
+  dataset = await fsGet();
+  document.getElementById('metaText').textContent = dataset.length + ' камней';
+  document.getElementById('dsCnt').textContent = dataset.length + ' образцов';
+  renderGrid();
+}
+loadData();
+setInterval(loadData, 30000); // refresh every 30s
+
+// ── ADMIN ──
+if (sessionStorage.getItem('jk_admin')) { isAdmin = true; showAdmin(); }
+
+function doLogin() {
+  if (document.getElementById('passIn').value === ADMIN_PASSWORD) {
+    isAdmin = true; sessionStorage.setItem('jk_admin','1');
+    showAdmin();
+    document.getElementById('loginErr').style.display='none';
+  } else {
+    document.getElementById('loginErr').style.display='block';
+  }
+}
+
+function doLogout() {
+  isAdmin=false; sessionStorage.removeItem('jk_admin');
+  document.getElementById('loginView').style.display='block';
+  document.getElementById('panelView').style.display='none';
+  document.getElementById('ownerPill').style.display='none';
+  document.getElementById('tabCol').classList.add('hidden');
+  document.getElementById('tabAdm').textContent='Вход';
+  document.getElementById('passIn').value='';
+  switchTab('scan');
+}
+
+function showAdmin() {
+  document.getElementById('loginView').style.display='none';
+  document.getElementById('panelView').style.display='block';
+  document.getElementById('ownerPill').style.display='inline-block';
+  document.getElementById('tabCol').classList.remove('hidden');
+  document.getElementById('tabAdm').textContent='Владелец';
+}
 
 // ── TABS ──
-window.switchTab = (name) => {
-  ['scan','dataset','admin'].forEach((n,i)=>{
-    document.querySelectorAll('.tab')[i]?.classList.toggle('active',n===name);
-    document.getElementById('screen-'+n)?.classList.toggle('active',n===name);
-    if(n===name) document.getElementById('screen-'+n).style.display='block';
-    else document.getElementById('screen-'+n).style.display='none';
+function switchTab(name) {
+  ['scan','dataset','admin'].forEach(n => {
+    document.getElementById('screen-'+n).classList.toggle('active', n===name);
   });
-  document.getElementById('screen-'+name).style.display='block';
-  if(name==='dataset') renderDataset();
-};
-
-// Fix tab switching
-window.switchTab = (name) => {
-  document.querySelectorAll('.tab:not(.hidden)').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');});
-  const names=['scan','dataset','admin'];
-  const idx=names.indexOf(name);
-  const visibleTabs=document.querySelectorAll('.tab');
-  visibleTabs[idx]?.classList.add('active');
-  document.getElementById('screen-'+name).classList.add('active');
-  if(name==='dataset') renderDataset();
-};
+  document.getElementById('tabScan').classList.toggle('active', name==='scan');
+  document.getElementById('tabCol').classList.toggle('active', name==='dataset');
+  document.getElementById('tabAdm').classList.toggle('active', name==='admin');
+  if (name==='dataset') renderGrid();
+}
 
 // ── CAMERA ──
-window.startCamera = async () => {
-  setStatus('Запуск камеры…');
+async function startCam() {
+  setSt('Запуск камеры…');
   try {
-    if(stream) stream.getTracks().forEach(t=>t.stop());
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:1280}}});
-    const video=document.getElementById('videoEl');
-    video.srcObject=stream; video.style.display='block';
+    if (stream) stream.getTracks().forEach(t=>t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {facingMode:'environment', width:{ideal:1920}, height:{ideal:1920}}
+    });
+    const track = stream.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      try { await track.applyConstraints({advanced:[{focusMode:'continuous'}]}); } catch(e){}
+    }
+    const v = document.getElementById('videoEl');
+    v.srcObject = stream; v.style.display='block';
     document.getElementById('canvasEl').style.display='none';
-    cameraActive=true; currentImageData=null;
-    document.getElementById('btnScan').disabled=false;
-    document.getElementById('cameraHint').textContent='наведите на камень';
-    setStatus(''); document.getElementById('resultArea').innerHTML='';
-  } catch(e){ setStatus('Камера недоступна. Используйте «Фото».'); }
-};
+    camActive=true; imgData=null;
+    document.getElementById('scanBtn').disabled=false;
+    document.getElementById('vfHint').textContent='Поднесите камень';
+    setSt('');
+    document.getElementById('resultArea').innerHTML='';
+  } catch(e) { setSt('Используйте кнопку «Фото»'); }
+}
 
-window.loadFromFile = (e) => {
+function loadFile(e) {
   const file=e.target.files[0]; if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    currentImageData=ev.target.result;
-    const img=new Image(), canvas=document.getElementById('canvasEl'), ctx=canvas.getContext('2d');
-    img.onload=()=>{ canvas.width=img.width; canvas.height=img.height; ctx.drawImage(img,0,0); document.getElementById('videoEl').style.display='none'; canvas.style.display='block'; };
-    img.src=currentImageData;
-    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;cameraActive=false;}
-    document.getElementById('btnScan').disabled=false;
-    document.getElementById('cameraHint').textContent='изображение загружено';
-    setStatus(''); document.getElementById('resultArea').innerHTML='';
+  const r=new FileReader();
+  r.onload=ev=>{
+    imgData=ev.target.result;
+    const img=new Image(), c=document.getElementById('canvasEl'), ctx=c.getContext('2d');
+    img.onload=()=>{c.width=img.width;c.height=img.height;ctx.drawImage(img,0,0);document.getElementById('videoEl').style.display='none';c.style.display='block';};
+    img.src=imgData;
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;camActive=false;}
+    document.getElementById('scanBtn').disabled=false;
+    document.getElementById('vfHint').textContent='Изображение загружено';
+    setSt(''); document.getElementById('resultArea').innerHTML='';
   };
-  reader.readAsDataURL(file); e.target.value='';
-};
+  r.readAsDataURL(file); e.target.value='';
+}
+
+window.addEventListener('load', () => { startCam(); });
 
 // ── FEATURES ──
-function extractFeatures(data,W,H){
-  const f=[],bins=16,hR=new Array(bins).fill(0),hG=new Array(bins).fill(0),hB=new Array(bins).fill(0),total=W*H;
+function getFeatures(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const s=128, c=document.createElement('canvas');
+      c.width=s; c.height=s;
+      const ctx=c.getContext('2d');
+      ctx.drawImage(img,0,0,s,s);
+      resolve(extractF(ctx.getImageData(0,0,s,s).data,s,s));
+    };
+    img.src=src;
+  });
+}
+
+function extractF(data,W,H){
+  const f=[];
+  const bins=32;
+  const hR=new Array(bins).fill(0),hG=new Array(bins).fill(0),hB=new Array(bins).fill(0);
+  const total=W*H;
   for(let i=0;i<data.length;i+=4){hR[Math.floor(data[i]/(256/bins))]++;hG[Math.floor(data[i+1]/(256/bins))]++;hB[Math.floor(data[i+2]/(256/bins))]++;}
-  hR.forEach(v=>f.push(v/total)); hG.forEach(v=>f.push(v/total)); hB.forEach(v=>f.push(v/total));
-  const gN=3,cW=Math.floor(W/gN),cH=Math.floor(H/gN);
-  for(let gy=0;gy<gN;gy++) for(let gx=0;gx<gN;gx++){
-    let sR=0,sG=0,sB=0,cnt=0,ssR=0,ssG=0;
-    for(let y=gy*cH;y<(gy+1)*cH&&y<H;y++) for(let x=gx*cW;x<(gx+1)*cW&&x<W;x++){const idx=(y*W+x)*4;sR+=data[idx];sG+=data[idx+1];sB+=data[idx+2];cnt++;}
+  hR.forEach(v=>f.push(v/total));hG.forEach(v=>f.push(v/total));hB.forEach(v=>f.push(v/total));
+  const gN=4,cW=Math.floor(W/gN),cH=Math.floor(H/gN);
+  for(let gy=0;gy<gN;gy++)for(let gx=0;gx<gN;gx++){
+    let sR=0,sG=0,sB=0,cnt=0,ssR=0,ssG=0,ssB=0;
+    for(let y=gy*cH;y<(gy+1)*cH&&y<H;y++)for(let x=gx*cW;x<(gx+1)*cW&&x<W;x++){const idx=(y*W+x)*4;sR+=data[idx];sG+=data[idx+1];sB+=data[idx+2];cnt++;}
     const mR=sR/cnt/255,mG=sG/cnt/255,mB=sB/cnt/255;
-    for(let y=gy*cH;y<(gy+1)*cH&&y<H;y++) for(let x=gx*cW;x<(gx+1)*cW&&x<W;x++){const idx=(y*W+x)*4;ssR+=Math.pow(data[idx]/255-mR,2);ssG+=Math.pow(data[idx+1]/255-mG,2);}
-    f.push(mR,mG,mB,Math.sqrt(ssR/cnt),Math.sqrt(ssG/cnt),(mR+mG+mB)/3);
+    for(let y=gy*cH;y<(gy+1)*cH&&y<H;y++)for(let x=gx*cW;x<(gx+1)*cW&&x<W;x++){const idx=(y*W+x)*4;ssR+=Math.pow(data[idx]/255-mR,2);ssG+=Math.pow(data[idx+1]/255-mG,2);ssB+=Math.pow(data[idx+2]/255-mB,2);}
+    f.push(mR,mG,mB,Math.sqrt(ssR/cnt),Math.sqrt(ssG/cnt),Math.sqrt(ssB/cnt));
   }
   const zones=[[0,0,0.5,0.5],[0.5,0,1,0.5],[0,0.5,0.5,1],[0.5,0.5,1,1]];
   for(const[x0,y0,x1,y1]of zones){
     let e=0,cnt=0;
-    for(let y=Math.floor(y0*H)+1;y<Math.floor(y1*H)-1;y++) for(let x=Math.floor(x0*W)+1;x<Math.floor(x1*W)-1;x++){
+    for(let y=Math.floor(y0*H)+1;y<Math.floor(y1*H)-1;y++)for(let x=Math.floor(x0*W)+1;x<Math.floor(x1*W)-1;x++){
       const g=(px,py)=>{const idx=(py*W+px)*4;return(data[idx]*0.299+data[idx+1]*0.587+data[idx+2]*0.114)/255;};
       const gx2=g(x+1,y)-g(x-1,y),gy2=g(x,y+1)-g(x,y-1);e+=Math.sqrt(gx2*gx2+gy2*gy2);cnt++;
     }
     f.push(e/cnt);
   }
-  const hh=new Array(8).fill(0);
-  for(let i=0;i<data.length;i+=4){const r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255,max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;if(d<0.05)continue;let h=0;if(max===r)h=(g-b)/d%6;else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4;h=((h*60)+360)%360;hh[Math.floor(h/45)]++;}
-  const ht=hh.reduce((a,b)=>a+b,1); hh.forEach(v=>f.push(v/ht));
+  const hh=new Array(16).fill(0);
+  for(let i=0;i<data.length;i+=4){const r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255,max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;if(d<0.05)continue;let h=0;if(max===r)h=(g-b)/d%6;else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4;h=((h*60)+360)%360;hh[Math.floor(h/22.5)]++;}
+  const ht=hh.reduce((a,b)=>a+b,1);hh.forEach(v=>f.push(v/ht));
   return f;
 }
 
-function cosine(a,b){let dot=0,na=0,nb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-9);}
-
-function getImageFeatures(src){return new Promise(resolve=>{const img=new Image();img.onload=()=>{const s=128,c=document.createElement('canvas');c.width=s;c.height=s;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,s,s);resolve(extractFeatures(ctx.getImageData(0,0,s,s).data,s,s));};img.src=src;});}
-
-function hashFeatures(f){return CryptoJS.SHA256(f.map(v=>v.toFixed(4)).join(',')).toString().substring(0,16).toUpperCase();}
-
-// compress image to max 400px, quality 0.6
-function compressImage(src){return new Promise(resolve=>{const img=new Image();img.onload=()=>{const max=400,scale=Math.min(max/img.width,max/img.height,1);const c=document.createElement('canvas');c.width=img.width*scale;c.height=img.height*scale;c.getContext('2d').drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',0.6));};img.src=src;});}
+function cosine(a,b){let dot=0,na=0,nb=0;const len=Math.min(a.length,b.length);for(let i=0;i<len;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-9);}
+function hashF(f){return CryptoJS.SHA256(f.slice(0,20).map(v=>v.toFixed(3)).join(',')).toString().slice(0,16).toUpperCase();}
 
 // ── SCAN ──
-window.doScan = async () => {
-  if(dataset.length===0){showResult(null,null);return;}
-  let imageData=currentImageData;
-  if(cameraActive&&!imageData){
-    const video=document.getElementById('videoEl'),canvas=document.getElementById('canvasEl'),ctx=canvas.getContext('2d');
-    canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||640;
-    ctx.drawImage(video,0,0);imageData=canvas.toDataURL('image/jpeg',0.85);
-    canvas.style.display='block';video.style.display='none';
+async function doScan() {
+  if (dataset.length===0) { showNoMatch(null); return; }
+  let src=imgData;
+  if (camActive&&!src) {
+    const v=document.getElementById('videoEl'),c=document.getElementById('canvasEl'),ctx=c.getContext('2d');
+    c.width=v.videoWidth||640;c.height=v.videoHeight||640;
+    ctx.drawImage(v,0,0);src=c.toDataURL('image/jpeg',0.9);
+    c.style.display='block';v.style.display='none';
   }
-  if(!imageData){setStatus('Нет изображения');return;}
-  document.getElementById('cameraWrap').classList.add('scanning');
-  document.getElementById('btnScan').disabled=true;
-  document.getElementById('btnScanLabel').textContent='Анализ';
-  setStatus('Извлечение паттернов…'); document.getElementById('resultArea').innerHTML='';
-  await new Promise(r=>setTimeout(r,50));
-  const qf=await getImageFeatures(imageData),qh=hashFeatures(qf);
+  if (!src) { setSt('Нет изображения'); return; }
+  document.getElementById('vf').classList.add('scanning');
+  document.getElementById('scanBtn').disabled=true;
+  document.getElementById('scanBtn').textContent='Анализ...';
+  setSt('Извлечение паттернов…');
+  document.getElementById('resultArea').innerHTML='';
+  await new Promise(r=>setTimeout(r,60));
+  const qf=await getFeatures(src);
+  const qh=hashF(qf);
   let best=null,bestScore=-1;
-  for(const stone of dataset){if(!stone.features)continue;const s=cosine(qf,stone.features);if(s>bestScore){bestScore=s;best=stone;}}
-  document.getElementById('cameraWrap').classList.remove('scanning');
-  document.getElementById('btnScan').disabled=false;
-  document.getElementById('btnScanLabel').textContent='Сканировать ещё';
-  if(best&&bestScore>=0.82){setStatus(`✓ совпадение ${(bestScore*100).toFixed(1)}%  ·  ${qh}`);showResult(best,bestScore);}
-  else{setStatus(`∅ нет совпадения (макс. ${best?(bestScore*100).toFixed(1)+'%':'—'})  ·  ${qh}`);showResult(null,bestScore);}
-};
-
-function setStatus(t){document.getElementById('statusBar').innerHTML=t;}
-
-function showResult(stone,score){
-  const area=document.getElementById('resultArea');
-  if(!stone){area.innerHTML=`<div class="result-card no-match"><div class="no-match-msg"><div class="icon">◇</div><h3>Совпадений не найдено</h3><p>${score!==null?`Ближайшее: ${(score*100).toFixed(1)}%`:'Добавьте камни в базу'}</p></div></div>`;return;}
-  const sc=score>0.92?'#6aab9a':score>0.85?'#c4a96a':'#c45a4a';
-  const thumb=stone.imageData?`<img class="match-thumb" src="${stone.imageData}">`:`<div class="match-thumb-placeholder">◈</div>`;
-  area.innerHTML=`<div class="result-card"><div class="match-header">${thumb}<div class="match-info"><div class="match-name">${esc(stone.name)}</div><div class="match-score">сходство: ${(score*100).toFixed(1)}%</div>${stone.desc?`<div class="match-desc">${esc(stone.desc)}</div>`:''}</div></div><div class="score-bar"><div class="score-fill" style="width:${(score*100).toFixed(1)}%;background:${sc}"></div></div>${buildContactHTML(stone)}</div>`;
+  for(const s of dataset){
+    if(!s.features)continue;
+    const f=Array.isArray(s.features)?s.features:[];
+    const sc=cosine(qf,f);
+    if(sc>bestScore){bestScore=sc;best=s;}
+  }
+  document.getElementById('vf').classList.remove('scanning');
+  document.getElementById('scanBtn').disabled=false;
+  document.getElementById('scanBtn').textContent='Идентифицировать';
+  if(best&&bestScore>=THRESHOLD){
+    setSt('✓ '+(bestScore*100).toFixed(1)+'%  ·  '+qh);
+    showMatch(best,bestScore);
+    if(best.link) setTimeout(()=>window.open(buildHref(best.linkType,best.link),'_blank'),1500);
+  } else {
+    setSt('∅ не идентифицировано  ·  '+qh);
+    showNoMatch(bestScore);
+  }
 }
 
-function buildContactHTML(stone){
-  if(!stone.link)return'';
-  const icons={url:'🔗',tg:'✈️',email:'✉️',phone:'📞',text:'📝'};
-  const labels={url:'Открыть сайт',tg:'Telegram',email:'Email',phone:'Позвонить',text:'Контакт'};
-  return`<a class="contact-btn" href="${buildHref(stone.linkType,stone.link)}" target="_blank"><span class="contact-icon">${icons[stone.linkType]||'🔗'}</span><span class="contact-label"><div>${labels[stone.linkType]||'Перейти'}</div><div class="contact-sublabel">${esc(stone.link)}</div></span></a>`;
+function setSt(t){document.getElementById('scanSt').textContent=t;}
+
+function showMatch(stone,score){
+  const pct=(score*100).toFixed(1);
+  const thumb=stone.imageData?`<img class="res-img" src="${stone.imageData}">`:'';
+  const contact=stone.link?buildCLink(stone):'';
+  document.getElementById('resultArea').innerHTML=`<div class="result-card match">${thumb}<div class="res-body"><div class="res-pct-row"><div class="res-pct">${pct}<span style="font-size:16px;color:var(--white-d)">%</span></div><div class="res-lbl">Совпадение</div></div><div class="res-bar"><div class="res-bar-fill" style="width:${pct}%"></div></div><div class="res-name">${esc(stone.name)}</div>${stone.desc?`<div class="res-desc">${esc(stone.desc)}</div>`:''}<div class="res-hash">ID: ${hashF(stone.features||[])}</div>${contact}${stone.link?'<div class="nav-hint">Переход через 1.5 с…</div>':''}</div></div>`;
 }
 
-function buildHref(type,val){if(type==='email')return`mailto:${val}`;if(type==='phone')return`tel:${val}`;if(type==='tg')return val.startsWith('http')?val:`https://t.me/${val.replace('@','')}`;if(type==='text')return'#';return val.startsWith('http')?val:'https://'+val;}
+function showNoMatch(score){
+  document.getElementById('resultArea').innerHTML=`<div class="result-card no-match"><div class="no-match-inner"><div class="no-match-g">◇</div><div class="no-match-t">Не идентифицировано</div><div class="no-match-s">${score!==null?'Ближайшее: '+(score*100).toFixed(1)+'%':'Добавьте образцы в коллекцию'}</div></div></div>`;
+}
+
+function buildCLink(stone){
+  const icons={url:'🔗',tg:'✈️',email:'✉️',phone:'📞'};
+  const labels={url:'Перейти на сайт',tg:'Telegram',email:'Email',phone:'Позвонить'};
+  return`<a class="clink" href="${buildHref(stone.linkType,stone.link)}" target="_blank"><div class="clink-ico">${icons[stone.linkType]||'🔗'}</div><div><div class="clink-main">${labels[stone.linkType]||'Перейти'}</div><div class="clink-sub">${esc(stone.link)}</div></div></a>`;
+}
+
+function buildHref(type,val){if(type==='email')return`mailto:${val}`;if(type==='phone')return`tel:${val}`;if(type==='tg')return val.startsWith('http')?val:`https://t.me/${val.replace('@','')}`;return val.startsWith('http')?val:'https://'+val;}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// ── DATASET ──
-function renderDataset(){
+// ── GRID ──
+function renderGrid(){
   if(!isAdmin)return;
-  const grid=document.getElementById('stoneGrid'),empty=document.getElementById('emptyDs');
+  const grid=document.getElementById('grid'),empty=document.getElementById('emptyEl');
   grid.innerHTML='';
   if(dataset.length===0){empty.style.display='block';return;}
   empty.style.display='none';
-  dataset.forEach(stone=>{
-    const card=document.createElement('div');card.className='stone-card';
-    const imgHTML=stone.imageData?`<img class="stone-img" src="${stone.imageData}" loading="lazy">`:`<div class="stone-img-placeholder">◈</div>`;
-    card.innerHTML=`${imgHTML}<div class="stone-meta"><div class="stone-meta-name">${esc(stone.name)}</div><div class="stone-meta-link">${esc(stone.link||'—')}</div></div>`;
-    card.onclick=()=>openDetail(stone);
-    grid.appendChild(card);
+  dataset.forEach(s=>{
+    const tile=document.createElement('div');tile.className='tile';
+    const img=s.imageData?`<img class="tile-img" src="${s.imageData}" loading="lazy">`:`<div class="tile-ph">◈</div>`;
+    tile.innerHTML=`${img}<div class="tile-info"><div class="tile-name">${esc(s.name)}</div><div class="tile-link">${esc(s.link||'—')}</div></div>`;
+    tile.onclick=()=>openDetail(s);
+    grid.appendChild(tile);
   });
 }
 
-function updateDbCount(){document.getElementById('dbCount').textContent=`${dataset.length} камн${plural(dataset.length)}`;}
-function plural(n){if(n%10===1&&n%100!==11)return'ь';if(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14))return'я';return'ей';}
-
 // ── ADD/EDIT ──
-window.openAddModal = () => {
+function openAdd(){
   if(!isAdmin)return;
-  editingId=null;modalImageData=null;
-  document.getElementById('modalTitle').textContent='Новый камень';
-  document.getElementById('stoneName').value='';
-  document.getElementById('stoneDesc').value='';
-  document.getElementById('stoneLink').value='';
-  document.getElementById('modalPreviewImg').style.display='none';
-  document.getElementById('modalPhotoPlaceholder').style.display='flex';
-  document.getElementById('btnDeleteStone').style.display='none';
-  setLinkTypeRaw('url');
-  document.getElementById('addModal').style.display='flex';
-};
-
-window.closeAddModal=(e)=>{if(e.target===document.getElementById('addModal'))closeAddModalDirect();};
-window.closeAddModalDirect=()=>{document.getElementById('addModal').style.display='none';};
-window.closeDetailModal=(e)=>{if(e.target===document.getElementById('detailModal'))document.getElementById('detailModal').style.display='none';};
-
-window.setLinkType=(btn,type)=>{
-  document.querySelectorAll('.link-type-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');currentLinkType=type;
-  const p={url:'https://example.com',tg:'@username',email:'info@...',phone:'+7...',text:'Текст'};
-  document.getElementById('stoneLink').placeholder=p[type]||'';
-};
-
-function setLinkTypeRaw(type){
-  currentLinkType=type;
-  const types=['url','tg','email','phone','text'];
-  document.querySelectorAll('.link-type-btn').forEach((b,i)=>b.classList.toggle('active',types[i]===type));
+  editId=null;modalImg=null;
+  document.getElementById('sheetTit').textContent='Новый образец';
+  document.getElementById('sName').value='';document.getElementById('sDesc').value='';document.getElementById('sLink').value='';
+  document.getElementById('photoPreview').style.display='none';
+  document.getElementById('dropIco').style.display='block';document.getElementById('dropTxt').style.display='block';
+  document.getElementById('delBtn').style.display='none';
+  setLtRaw('url');
+  document.getElementById('addSheet').style.display='flex';
 }
 
-window.onModalPhoto=(e)=>{
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    modalImageData=ev.target.result;
-    document.getElementById('modalPreviewImg').src=modalImageData;
-    document.getElementById('modalPreviewImg').style.display='block';
-    document.getElementById('modalPhotoPlaceholder').style.display='none';
-  };
-  reader.readAsDataURL(file);e.target.value='';
-};
+function setLt(btn,type){document.querySelectorAll('.lt-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');ltType=type;const ph={url:'https://...',tg:'@username',email:'info@...',phone:'+7...'};document.getElementById('sLink').placeholder=ph[type]||'';}
+function setLtRaw(type){ltType=type;const t=['url','tg','email','phone'];document.querySelectorAll('.lt-btn').forEach((b,i)=>b.classList.toggle('active',t[i]===type));}
 
-window.saveStone = async () => {
+function onPhoto(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{modalImg=ev.target.result;document.getElementById('photoPreview').src=modalImg;document.getElementById('photoPreview').style.display='block';document.getElementById('dropIco').style.display='none';document.getElementById('dropTxt').style.display='none';};
+  r.readAsDataURL(file);e.target.value='';
+}
+
+async function compress(src){return new Promise(res=>{const img=new Image();img.onload=()=>{const max=480,scale=Math.min(max/img.width,max/img.height,1);const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.65));};img.src=src;});}
+
+async function saveStone(){
   if(!isAdmin)return;
-  const name=document.getElementById('stoneName').value.trim();
+  const name=document.getElementById('sName').value.trim();
   if(!name){alert('Введите название');return;}
   showSaving(true);
-  try {
-    let features=null, compressedImage=null;
-    if(modalImageData){
-      features=await getImageFeatures(modalImageData);
-      compressedImage=await compressImage(modalImageData);
-    }
-    const data={name,desc:document.getElementById('stoneDesc').value.trim(),link:document.getElementById('stoneLink').value.trim(),linkType:currentLinkType,updatedAt:Date.now()};
+  try{
+    let features=null,imageData=null;
+    if(modalImg){features=await getFeatures(modalImg);imageData=await compress(modalImg);}
+    const data={name,desc:document.getElementById('sDesc').value.trim(),link:document.getElementById('sLink').value.trim(),linkType:ltType,updatedAt:Date.now()};
     if(features)data.features=features;
-    if(compressedImage)data.imageData=compressedImage;
-    if(editingId){
-      if(!modalImageData){const existing=dataset.find(s=>s.id===editingId);if(existing?.imageData)data.imageData=existing.imageData;if(existing?.features)data.features=existing.features;}
-      await updateDoc(doc(db,'stones',editingId),data);
-    } else {
-      await addDoc(collection(db,'stones'),data);
-    }
-    closeAddModalDirect();
-  } catch(e){alert('Ошибка: '+e.message);} finally{showSaving(false);}
-};
+    if(imageData)data.imageData=imageData;
+    if(editId){
+      if(!modalImg){const ex=dataset.find(s=>s.id===editId);if(ex?.imageData)data.imageData=ex.imageData;if(ex?.features)data.features=ex.features;}
+      await fsUpdate(editId,data);
+    }else{await fsAdd(data);}
+    document.getElementById('addSheet').style.display='none';
+    await loadData();
+  }catch(e){alert('Ошибка: '+e.message);}
+  finally{showSaving(false);}
+}
 
-window.deleteStone = async () => {
-  if(!isAdmin||!editingId)return;
-  if(!confirm('Удалить этот камень?'))return;
+async function deleteStone(){
+  if(!isAdmin||!editId)return;
+  if(!confirm('Удалить образец?'))return;
   showSaving(true);
-  try{await deleteDoc(doc(db,'stones',editingId));closeAddModalDirect();document.getElementById('detailModal').style.display='none';}
-  catch(e){alert('Ошибка: '+e.message);}finally{showSaving(false);}
-};
-
-function showSaving(show){
-  let el=document.getElementById('savingOverlay');
-  if(show&&!el){el=document.createElement('div');el.id='savingOverlay';el.className='saving-overlay';el.innerHTML='<div class="loading-spinner"></div><div class="saving-text">Сохранение…</div>';document.body.appendChild(el);}
-  else if(!show&&el)el.remove();
+  try{await fsDelete(editId);document.getElementById('addSheet').style.display='none';document.getElementById('detailSheet').style.display='none';await loadData();}
+  catch(e){alert('Ошибка: '+e.message);}
+  finally{showSaving(false);}
 }
 
 // ── DETAIL ──
-function openDetail(stone){
-  detailStone=stone;
-  const img=document.getElementById('detailImg');
-  if(stone.imageData){img.src=stone.imageData;img.style.display='block';}else{img.style.display='none';}
-  document.getElementById('detailName').textContent=stone.name;
-  document.getElementById('detailDesc').textContent=stone.desc||'';
-  document.getElementById('detailHash').textContent=stone.features?'hash: '+hashFeatures(stone.features):'';
-  const icons={url:'🔗',tg:'✈️',email:'✉️',phone:'📞',text:'📝'};
-  const labels={url:'Открыть сайт',tg:'Telegram',email:'Email',phone:'Телефон',text:'Контакт'};
-  document.getElementById('detailContactIcon').textContent=icons[stone.linkType]||'🔗';
-  document.getElementById('detailContactLabel').textContent=labels[stone.linkType]||'Перейти';
-  document.getElementById('detailContactValue').textContent=stone.link||'—';
-  document.getElementById('detailContactBtn').href=stone.link?buildHref(stone.linkType,stone.link):'#';
-  document.getElementById('btnEditFromDetail').style.display=isAdmin?'flex':'none';
-  document.getElementById('detailModal').style.display='flex';
+function openDetail(s){
+  detailStone=s;
+  const img=document.getElementById('dImg');
+  if(s.imageData){img.src=s.imageData;img.style.display='block';}else{img.style.display='none';}
+  document.getElementById('dName').textContent=s.name;
+  document.getElementById('dDesc').textContent=s.desc||'';
+  document.getElementById('dHash').textContent=s.features?'ID: '+hashF(s.features):'';
+  const icons={url:'🔗',tg:'✈️',email:'✉️',phone:'📞'};
+  const labels={url:'Открыть сайт',tg:'Telegram',email:'Email',phone:'Телефон'};
+  document.getElementById('dIco').textContent=icons[s.linkType]||'🔗';
+  document.getElementById('dLbl').textContent=labels[s.linkType]||'Перейти';
+  document.getElementById('dSub').textContent=s.link||'—';
+  document.getElementById('dLink').href=s.link?buildHref(s.linkType,s.link):'#';
+  document.getElementById('editBtn').style.display=isAdmin?'block':'none';
+  document.getElementById('detailSheet').style.display='flex';
 }
 
-window.editFromDetail = () => {
+function editStone(){
   if(!isAdmin)return;
-  editingId=detailStone.id; modalImageData=null;
-  document.getElementById('modalTitle').textContent='Редактировать';
-  document.getElementById('stoneName').value=detailStone.name;
-  document.getElementById('stoneDesc').value=detailStone.desc||'';
-  document.getElementById('stoneLink').value=detailStone.link||'';
-  if(detailStone.imageData){document.getElementById('modalPreviewImg').src=detailStone.imageData;document.getElementById('modalPreviewImg').style.display='block';document.getElementById('modalPhotoPlaceholder').style.display='none';}
-  else{document.getElementById('modalPreviewImg').style.display='none';document.getElementById('modalPhotoPlaceholder').style.display='flex';}
-  setLinkTypeRaw(detailStone.linkType||'url');
-  document.getElementById('btnDeleteStone').style.display='block';
-  document.getElementById('detailModal').style.display='none';
-  document.getElementById('addModal').style.display='flex';
-};
+  editId=detailStone.id;modalImg=null;
+  document.getElementById('sheetTit').textContent='Редактировать';
+  document.getElementById('sName').value=detailStone.name;
+  document.getElementById('sDesc').value=detailStone.desc||'';
+  document.getElementById('sLink').value=detailStone.link||'';
+  if(detailStone.imageData){document.getElementById('photoPreview').src=detailStone.imageData;document.getElementById('photoPreview').style.display='block';document.getElementById('dropIco').style.display='none';document.getElementById('dropTxt').style.display='none';}
+  else{document.getElementById('photoPreview').style.display='none';document.getElementById('dropIco').style.display='block';document.getElementById('dropTxt').style.display='block';}
+  setLtRaw(detailStone.linkType||'url');
+  document.getElementById('delBtn').style.display='block';
+  document.getElementById('detailSheet').style.display='none';
+  document.getElementById('addSheet').style.display='flex';
+}
+
+function showSaving(show){let el=document.getElementById('sv');if(show&&!el){el=document.createElement('div');el.id='sv';el.className='saving-veil';el.innerHTML='<div class="ring"></div><div class="saving-lbl">Сохранение</div>';document.body.appendChild(el);}else if(!show&&el)el.remove();}
 </script>
 </body>
 </html>
