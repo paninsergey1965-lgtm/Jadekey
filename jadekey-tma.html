@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JadeKey</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@300;400&display=swap');
+
+  :root {
+    --jade: #4a7c6f;
+    --jade-light: #6aab9a;
+    --jade-dark: #2d4f46;
+    --stone: #1a1a18;
+    --stone-mid: #242420;
+    --stone-light: #2e2e2a;
+    --cream: #e8e4d8;
+    --cream-dim: #a09a8a;
+    --gold: #c4a96a;
+    --gold-dim: #7a6840;
+    --red: #c45a4a;
+    --gap: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--stone);
+    color: var(--cream);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px var(--gap) 14px;
+    border-bottom: 1px solid rgba(74,124,111,0.25);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(26,26,24,0.95);
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    color: var(--jade-light);
+  }
+  .logo span { color: var(--gold); font-style: italic; }
+  .db-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(74,124,111,0.2);
+    background: var(--stone-mid);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--cream-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active {
+    color: var(--jade-light);
+    border-bottom-color: var(--jade);
+    background: rgba(74,124,111,0.06);
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: var(--gap); animation: fadeIn 0.25s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+
+  /* ── CAMERA AREA ── */
+  .camera-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--stone-light);
+    border: 1px solid rgba(74,124,111,0.3);
+    margin-bottom: var(--gap);
+  }
+  #videoEl, #canvasEl {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  #canvasEl { display: none; position: absolute; top:0; left:0; }
+
+  .camera-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+  .corner {
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: var(--jade-light);
+    border-style: solid;
+    opacity: 0.7;
+  }
+  .corner.tl { top:12px; left:12px; border-width:2px 0 0 2px; }
+  .corner.tr { top:12px; right:12px; border-width:2px 2px 0 0; }
+  .corner.bl { bottom:12px; left:12px; border-width:0 0 2px 2px; }
+  .corner.br { bottom:12px; right:12px; border-width:0 2px 2px 0; }
+
+  .scan-line {
+    position: absolute; left: 12px; right: 12px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--jade-light), transparent);
+    top: 12px;
+    animation: scanMove 2.5s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .scanning .scan-line { opacity: 0.8; }
+  @keyframes scanMove {
+    0%,100% { top: 12%; }
+    50% { top: 85%; }
+  }
+
+  .camera-hint {
+    position: absolute; bottom: 10px; left: 0; right: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: rgba(106,171,154,0.6);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: var(--jade);
+    color: var(--cream);
+  }
+  .btn-primary:active { background: var(--jade-dark); transform: scale(0.98); }
+  .btn-primary:disabled { background: var(--stone-light); color: var(--cream-dim); cursor: default; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--jade-light);
+    border: 1px solid rgba(74,124,111,0.4);
+  }
+  .btn-secondary:active { background: rgba(74,124,111,0.1); }
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid rgba(196,90,74,0.3);
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    background: var(--stone-mid);
+    border: 1px solid rgba(74,124,111,0.25);
+    border-radius: 4px;
+    padding: var(--gap);
+    margin-top: var(--gap);
+    animation: fadeIn 0.35s ease;
+  }
+  .result-card.no-match {
+    border-color: rgba(196,90,74,0.3);
+  }
+
+  .match-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .match-thumb {
+    width: 72px; height: 72px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(74,124,111,0.3);
+    flex-shrink: 0;
+  }
+  .match-thumb-placeholder {
+    width: 72px; height: 72px;
+    border-radius: 3px;
+    background: var(--stone-light);
+    border: 1px solid rgba(74,124,111,0.2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+  .match-info { flex: 1; min-width: 0; }
+  .match-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--cream);
+    margin-bottom: 4px;
+  }
+  .match-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--jade-light);
+    margin-bottom: 6px;
+  }
+  .match-desc {
+    font-size: 14px;
+    color: var(--cream-dim);
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .score-bar {
+    height: 3px;
+    background: var(--stone-light);
+    border-radius: 2px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  .contact-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px var(--gap);
+    background: rgba(74,124,111,0.12);
+    border: 1px solid rgba(74,124,111,0.3);
+    border-radius: 3px;
+    color: var(--cream);
+    text-decoration: none;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .contact-btn:active { background: rgba(74,124,111,0.22); }
+  .contact-icon { font-size: 20px; flex-shrink: 0; }
+  .contact-label { flex: 1; }
+  .contact-sublabel { font-size: 12px; color: var(--cream-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
+
+  .no-match-msg {
+    text-align: center;
+    padding: 20px 0 8px;
+  }
+  .no-match-msg .icon { font-size: 36px; margin-bottom: 10px; }
+  .no-match-msg h3 { font-size: 18px; color: var(--cream-dim); font-weight: 300; }
+  .no-match-msg p { font-size: 13px; color: var(--cream-dim); margin-top: 6px; opacity: 0.6; }
+
+  /* ── DATASET SCREEN ── */
+  .ds-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .ds-title { font-size: 18px; font-weight: 300; letter-spacing: 0.08em; }
+  .ds-add-btn {
+    width: auto;
+    padding: 9px 18px;
+    font-size: 14px;
+    background: var(--jade);
+    color: var(--cream);
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 0.08em;
+  }
+
+  .stone-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stone-card {
+    background: var(--stone-mid);
+    border: 1px solid rgba(74,124,111,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .stone-card:active { border-color: rgba(74,124,111,0.6); }
+  .stone-img {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: var(--stone-light);
+  }
+  .stone-img-placeholder {
+    width: 100%; aspect-ratio: 1;
+    background: var(--stone-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+  }
+  .stone-meta {
+    padding: 8px 10px;
+  }
+  .stone-meta-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stone-meta-link {
+    font-size: 11px;
+    color: var(--cream-dim);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .empty-ds {
+    text-align: center;
+    padding: 48px 0;
+    color: var(--cream-dim);
+  }
+  .empty-ds .icon { font-size: 48px; margin-bottom: 14px; opacity: 0.4; }
+  .empty-ds p { font-size: 15px; font-style: italic; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,10,8,0.88);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: overlayIn 0.2s ease;
+  }
+  @keyframes overlayIn { from { opacity:0 } to { opacity:1 } }
+  .modal {
+    background: var(--stone-mid);
+    border: 1px solid rgba(74,124,111,0.3);
+    border-radius: 8px 8px 0 0;
+    padding: 20px var(--gap) 32px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalUp 0.25s ease;
+  }
+  @keyframes modalUp { from { transform:translateY(40px) } to { transform:none } }
+  .modal-title {
+    font-size: 20px;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    margin-bottom: 18px;
+    color: var(--jade-light);
+  }
+  .modal-close {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--cream-dim);
+    font-size: 22px;
+    cursor: pointer;
+    margin-top: -4px;
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--cream-dim);
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .form-input {
+    width: 100%;
+    padding: 11px 13px;
+    background: var(--stone-light);
+    border: 1px solid rgba(74,124,111,0.25);
+    border-radius: 3px;
+    color: var(--cream);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--jade); }
+  .form-input::placeholder { color: var(--cream-dim); opacity: 0.4; }
+
+  .link-type-select {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .link-type-btn {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(74,124,111,0.3);
+    background: transparent;
+    color: var(--cream-dim);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Cormorant Garamond', serif;
+    transition: all 0.2s;
+  }
+  .link-type-btn.active {
+    background: var(--jade);
+    color: var(--cream);
+    border-color: var(--jade);
+  }
+
+  /* photo preview in modal */
+  .photo-preview-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--stone-light);
+    border: 1px dashed rgba(74,124,111,0.3);
+    margin-bottom: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .photo-preview-wrap img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+  .photo-placeholder { color: var(--cream-dim); font-size: 13px; letter-spacing: 0.06em; opacity: 0.5; }
+
+  /* ── STATUS ── */
+  .status-bar {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--jade-light);
+    text-align: center;
+    padding: 8px;
+    letter-spacing: 0.06em;
+    min-height: 28px;
+  }
+
+  /* ── STONE DETAIL MODAL ── */
+  .detail-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid rgba(74,124,111,0.2);
+    margin-bottom: 14px;
+  }
+  .detail-name { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+  .detail-desc { font-size: 15px; color: var(--cream-dim); font-style: italic; margin-bottom: 14px; line-height: 1.5; }
+  .detail-hash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--gold-dim);
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+    word-break: break-all;
+  }
+
+  /* loading */
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.2s infinite;
+  }
+  @keyframes dots {
+    0% { content: '.' }
+    33% { content: '..' }
+    66% { content: '...' }
+  }
+
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Jade<span>Key</span></div>
+  <div class="db-count" id="dbCount">БД: 0 камней</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('scan')">◎ Сканировать</div>
+  <div class="tab" onclick="switchTab('dataset')">⬡ Датасет</div>
+</div>
+
+<!-- ════ SCAN SCREEN ════ -->
+<div class="screen active" id="screen-scan">
+  <div class="camera-wrap" id="cameraWrap">
+    <video id="videoEl" autoplay playsinline muted></video>
+    <canvas id="canvasEl"></canvas>
+    <div class="camera-overlay">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="scan-line"></div>
+      <div class="camera-hint" id="cameraHint">нажмите «сканировать»</div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar"></div>
+
+  <div class="btn-row" style="margin-bottom:10px">
+    <button class="btn btn-secondary" id="btnCamera" onclick="startCamera()">▶ Камера</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">⬆ Файл</button>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" onchange="loadFromFile(event)">
+
+  <button class="btn btn-primary" id="btnScan" onclick="doScan()" disabled>
+    <span id="btnScanLabel">Сканировать</span>
+  </button>
+
+  <div id="resultArea"></div>
+</div>
+
+<!-- ════ DATASET SCREEN ════ -->
+<div class="screen" id="screen-dataset">
+  <div class="ds-header">
+    <div class="ds-title">Коллекция</div>
+    <button class="ds-add-btn" onclick="openAddModal()">+ Добавить</button>
+  </div>
+  <div class="stone-grid" id="stoneGrid"></div>
+  <div class="empty-ds" id="emptyDs">
+    <div class="icon">◇</div>
+    <p>Датасет пуст.<br>Добавьте первый камень.</p>
+  </div>
+</div>
+
+<!-- ════ ADD STONE MODAL ════ -->
+<div class="modal-overlay" id="addModal" style="display:none" onclick="closeAddModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAddModalDirect()">✕</button>
+    <div class="modal-title" id="modalTitle">Новый камень</div>
+
+    <div class="form-group">
+      <div class="photo-preview-wrap" onclick="document.getElementById('modalFileInput').click()">
+        <img id="modalPreviewImg" style="display:none">
+        <div class="photo-placeholder" id="modalPhotoPlaceholder">
+          <div style="font-size:32px;margin-bottom:4px">📷</div>
+          <div>Нажмите для фото</div>
+        </div>
+      </div>
+      <input type="file" id="modalFileInput" accept="image/*" onchange="onModalPhoto(event)">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">НАЗВАНИЕ КАМНЯ</label>
+      <input class="form-input" id="stoneName" placeholder="напр. Нефрит зелёный #12">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ОПИСАНИЕ (необязательно)</label>
+      <input class="form-input" id="stoneDesc" placeholder="провенанс, характеристики...">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ТИП КОНТАКТА</label>
+      <div class="link-type-select">
+        <button class="link-type-btn active" onclick="setLinkType(this,'url')">🔗 Сайт</button>
+        <button class="link-type-btn" onclick="setLinkType(this,'tg')">✈️ Telegram</button>
+        <button class="link-type-btn" onclick="setLinkType(this,'email')">✉️ Email</button>
+        <button class="link-type-btn" onclick="setLinkType(this,'phone')">📞 Телефон</button>
+        <button class="link-type-btn" onclick="setLinkType(this,'text')">📝 Текст</button>
+      </div>
+      <input class="form-input" id="stoneLink" placeholder="https://...">
+    </div>
+
+    <button class="btn btn-primary" onclick="saveStone()" style="margin-top:4px">Сохранить камень</button>
+    <button class="btn btn-danger" id="btnDeleteStone" style="margin-top:10px;display:none" onclick="deleteStone()">Удалить камень</button>
+  </div>
+</div>
+
+<!-- ════ STONE DETAIL MODAL ════ -->
+<div class="modal-overlay" id="detailModal" style="display:none" onclick="closeDetailModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('detailModal').style.display='none'">✕</button>
+    <img id="detailImg" class="detail-img" style="display:none">
+    <div class="detail-name" id="detailName"></div>
+    <div class="detail-desc" id="detailDesc"></div>
+    <div class="detail-hash" id="detailHash"></div>
+    <a id="detailContactBtn" class="contact-btn" href="#" target="_blank">
+      <span class="contact-icon" id="detailContactIcon">🔗</span>
+      <span class="contact-label">
+        <div id="detailContactLabel">Перейти</div>
+        <div class="contact-sublabel" id="detailContactValue"></div>
+      </span>
+    </a>
+    <button class="btn btn-secondary" style="margin-top:10px" onclick="editFromDetail()">Редактировать</button>
+  </div>
+</div>
+
+<script>
+// ════ STATE ════
+let dataset = [];
+let currentImageData = null; // base64
+let stream = null;
+let cameraActive = false;
+let currentLinkType = 'url';
+let editingId = null;
+let detailStone = null;
+
+const STORAGE_KEY = 'jadekey_dataset_v2';
+
+// ════ PERSISTENCE ════
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(dataset)); } catch(e) {}
+}
+function load() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if (d) dataset = JSON.parse(d);
+  } catch(e) { dataset = []; }
+}
+
+// ════ INIT ════
+load();
+renderDataset();
+updateDbCount();
+
+// ════ TABS ════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['scan','dataset'][i]===name));
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if (name === 'dataset') renderDataset();
+}
+
+// ════ CAMERA ════
+async function startCamera() {
+  setStatus('Запуск камеры…');
+  try {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:1280} } });
+    const video = document.getElementById('videoEl');
+    video.srcObject = stream;
+    video.style.display = 'block';
+    document.getElementById('canvasEl').style.display = 'none';
+    cameraActive = true;
+    currentImageData = null;
+    document.getElementById('btnScan').disabled = false;
+    document.getElementById('btnScanLabel').textContent = 'Сканировать';
+    document.getElementById('cameraHint').textContent = 'наведите на камень';
+    setStatus('');
+    document.getElementById('resultArea').innerHTML = '';
+  } catch(e) {
+    setStatus('Камера недоступна. Используйте «Файл».');
+  }
+}
+
+function loadFromFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentImageData = ev.target.result;
+    const video = document.getElementById('videoEl');
+    const canvas = document.getElementById('canvasEl');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width; canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      video.style.display = 'none';
+      canvas.style.display = 'block';
+    };
+    img.src = currentImageData;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; cameraActive = false; }
+    document.getElementById('btnScan').disabled = false;
+    document.getElementById('btnScanLabel').textContent = 'Найти совпадение';
+    document.getElementById('cameraHint').textContent = 'изображение загружено';
+    setStatus('');
+    document.getElementById('resultArea').innerHTML = '';
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+// ════ FEATURE EXTRACTION ════
+function extractFeatures(imgData, width, height) {
+  const data = imgData;
+  const W = width, H = height;
+  const features = [];
+
+  // 1. COLOR HISTOGRAMS per channel (16 bins each = 48)
+  const bins = 16;
+  const hR = new Array(bins).fill(0);
+  const hG = new Array(bins).fill(0);
+  const hB = new Array(bins).fill(0);
+  const total = W * H;
+
+  for (let i = 0; i < data.length; i += 4) {
+    hR[Math.floor(data[i] / (256/bins))]++;
+    hG[Math.floor(data[i+1] / (256/bins))]++;
+    hB[Math.floor(data[i+2] / (256/bins))]++;
+  }
+  hR.forEach(v => features.push(v/total));
+  hG.forEach(v => features.push(v/total));
+  hB.forEach(v => features.push(v/total));
+
+  // 2. SPATIAL COLOR MOMENTS — 3×3 grid (9 cells × 6 moments = 54)
+  const gridN = 3;
+  const cW = Math.floor(W/gridN), cH = Math.floor(H/gridN);
+  for (let gy = 0; gy < gridN; gy++) {
+    for (let gx = 0; gx < gridN; gx++) {
+      let sumR=0,sumG=0,sumB=0,count=0;
+      let ssR=0,ssG=0;
+      for (let y = gy*cH; y < (gy+1)*cH && y < H; y++) {
+        for (let x = gx*cW; x < (gx+1)*cW && x < W; x++) {
+          const idx = (y*W+x)*4;
+          sumR+=data[idx]; sumG+=data[idx+1]; sumB+=data[idx+2]; count++;
+        }
+      }
+      const mR=sumR/count/255, mG=sumG/count/255, mB=sumB/count/255;
+      // variance pass
+      for (let y = gy*cH; y < (gy+1)*cH && y < H; y++) {
+        for (let x = gx*cW; x < (gx+1)*cW && x < W; x++) {
+          const idx = (y*W+x)*4;
+          ssR += Math.pow(data[idx]/255-mR,2);
+          ssG += Math.pow(data[idx+1]/255-mG,2);
+        }
+      }
+      features.push(mR, mG, mB, Math.sqrt(ssR/count), Math.sqrt(ssG/count), (mR+mG+mB)/3);
+    }
+  }
+
+  // 3. EDGE / TEXTURE — simple gradient energy (4 zones = 4)
+  const zones = [[0,0,0.5,0.5],[0.5,0,1,0.5],[0,0.5,0.5,1],[0.5,0.5,1,1]];
+  for (const [x0,y0,x1,y1] of zones) {
+    let energy = 0, cnt = 0;
+    for (let y = Math.floor(y0*H)+1; y < Math.floor(y1*H)-1; y++) {
+      for (let x = Math.floor(x0*W)+1; x < Math.floor(x1*W)-1; x++) {
+        const getG = (px,py) => {
+          const idx = (py*W+px)*4;
+          return (data[idx]*0.299+data[idx+1]*0.587+data[idx+2]*0.114)/255;
+        };
+        const gx2 = getG(x+1,y)-getG(x-1,y);
+        const gy2 = getG(x,y+1)-getG(x,y-1);
+        energy += Math.sqrt(gx2*gx2+gy2*gy2);
+        cnt++;
+      }
+    }
+    features.push(energy/cnt);
+  }
+
+  // 4. DOMINANT HUE distribution (8 bins = 8)
+  const hueHist = new Array(8).fill(0);
+  for (let i = 0; i < data.length; i += 4) {
+    const r=data[i]/255, g=data[i+1]/255, b=data[i+2]/255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+    if (d < 0.05) continue; // achromatic
+    let h = 0;
+    if (max===r) h=(g-b)/d%6;
+    else if (max===g) h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h = ((h*60)+360)%360;
+    hueHist[Math.floor(h/45)]++;
+  }
+  const htotal = hueHist.reduce((a,b)=>a+b,1);
+  hueHist.forEach(v => features.push(v/htotal));
+
+  return features; // 48+54+4+8 = 114 dims
+}
+
+function cosine(a, b) {
+  let dot=0, na=0, nb=0;
+  for (let i=0;i<a.length;i++) { dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+  return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-9);
+}
+
+function getImageFeatures(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const size = 128;
+      const c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, size, size);
+      const px = ctx.getImageData(0,0,size,size).data;
+      resolve(extractFeatures(px, size, size));
+    };
+    img.src = src;
+  });
+}
+
+function hashFeatures(features) {
+  const str = features.map(f => f.toFixed(4)).join(',');
+  return CryptoJS.SHA256(str).toString().substring(0,16).toUpperCase();
+}
+
+// ════ SCAN ════
+async function doScan() {
+  if (dataset.length === 0) {
+    showResult(null, null);
+    return;
+  }
+
+  let imageData = currentImageData;
+
+  // capture from video if camera active
+  if (cameraActive && !imageData) {
+    const video = document.getElementById('videoEl');
+    const canvas = document.getElementById('canvasEl');
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 640;
+    ctx.drawImage(video, 0, 0);
+    imageData = canvas.toDataURL('image/jpeg', 0.85);
+    canvas.style.display = 'block';
+    video.style.display = 'none';
+  }
+
+  if (!imageData) { setStatus('Нет изображения'); return; }
+
+  document.getElementById('cameraWrap').classList.add('scanning');
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('btnScanLabel').textContent = 'Анализ';
+  setStatus('<span class="loading-dots">Извлечение паттернов</span>');
+  document.getElementById('resultArea').innerHTML = '';
+
+  await sleep(50);
+
+  const queryFeatures = await getImageFeatures(imageData);
+  const queryHash = hashFeatures(queryFeatures);
+
+  // compare with dataset
+  let best = null, bestScore = -1;
+  for (const stone of dataset) {
+    if (!stone.features) continue;
+    const score = cosine(queryFeatures, stone.features);
+    if (score > bestScore) { bestScore = score; best = stone; }
+  }
+
+  document.getElementById('cameraWrap').classList.remove('scanning');
+  document.getElementById('btnScan').disabled = false;
+  document.getElementById('btnScanLabel').textContent = 'Сканировать ещё';
+
+  const THRESHOLD = 0.82;
+  if (best && bestScore >= THRESHOLD) {
+    setStatus(`✓ совпадение ${(bestScore*100).toFixed(1)}%  ·  hash: ${queryHash}`);
+    showResult(best, bestScore);
+  } else if (best) {
+    setStatus(`∅ нет совпадения (макс. ${(bestScore*100).toFixed(1)}%)  ·  hash: ${queryHash}`);
+    showResult(null, bestScore);
+  } else {
+    setStatus('Датасет пуст');
+    showResult(null, null);
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setStatus(html) {
+  document.getElementById('statusBar').innerHTML = html;
+}
+
+function showResult(stone, score) {
+  const area = document.getElementById('resultArea');
+  if (!stone) {
+    area.innerHTML = `
+      <div class="result-card no-match">
+        <div class="no-match-msg">
+          <div class="icon">◇</div>
+          <h3>Совпадений не найдено</h3>
+          <p>${score !== null ? `Ближайшее сходство: ${(score*100).toFixed(1)}%` : 'Добавьте камни в датасет'}</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const scoreColor = score > 0.92 ? '#6aab9a' : score > 0.85 ? '#c4a96a' : '#c45a4a';
+  const contact = buildContactHTML(stone);
+  const thumb = stone.image
+    ? `<img class="match-thumb" src="${stone.image}">`
+    : `<div class="match-thumb-placeholder">◈</div>`;
+
+  area.innerHTML = `
+    <div class="result-card">
+      <div class="match-header">
+        ${thumb}
+        <div class="match-info">
+          <div class="match-name">${esc(stone.name)}</div>
+          <div class="match-score">сходство: ${(score*100).toFixed(1)}%</div>
+          ${stone.desc ? `<div class="match-desc">${esc(stone.desc)}</div>` : ''}
+        </div>
+      </div>
+      <div class="score-bar">
+        <div class="score-fill" style="width:${(score*100).toFixed(1)}%;background:${scoreColor}"></div>
+      </div>
+      ${contact}
+    </div>`;
+}
+
+function buildContactHTML(stone) {
+  if (!stone.link) return '';
+  const icons = { url:'🔗', tg:'✈️', email:'✉️', phone:'📞', text:'📝' };
+  const labels = { url:'Открыть сайт', tg:'Написать в Telegram', email:'Написать письмо', phone:'Позвонить', text:'Контакт' };
+  const icon = icons[stone.linkType] || '🔗';
+  const label = labels[stone.linkType] || 'Перейти';
+  const href = buildHref(stone.linkType, stone.link);
+  return `<a class="contact-btn" href="${href}" target="_blank" rel="noopener">
+    <span class="contact-icon">${icon}</span>
+    <span class="contact-label">
+      <div>${label}</div>
+      <div class="contact-sublabel">${esc(stone.link)}</div>
+    </span>
+  </a>`;
+}
+
+function buildHref(type, val) {
+  if (type === 'email') return `mailto:${val}`;
+  if (type === 'phone') return `tel:${val}`;
+  if (type === 'tg') return val.startsWith('http') ? val : `https://t.me/${val.replace('@','')}`;
+  if (type === 'text') return '#';
+  return val.startsWith('http') ? val : 'https://'+val;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ════ DATASET ════
+function renderDataset() {
+  const grid = document.getElementById('stoneGrid');
+  const empty = document.getElementById('emptyDs');
+  grid.innerHTML = '';
+  if (dataset.length === 0) { empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  dataset.forEach(stone => {
+    const card = document.createElement('div');
+    card.className = 'stone-card';
+    const imgHTML = stone.image
+      ? `<img class="stone-img" src="${stone.image}" loading="lazy">`
+      : `<div class="stone-img-placeholder">◈</div>`;
+    card.innerHTML = `
+      ${imgHTML}
+      <div class="stone-meta">
+        <div class="stone-meta-name">${esc(stone.name)}</div>
+        <div class="stone-meta-link">${esc(stone.link||'—')}</div>
+      </div>`;
+    card.onclick = () => openDetail(stone);
+    grid.appendChild(card);
+  });
+  updateDbCount();
+}
+
+function updateDbCount() {
+  document.getElementById('dbCount').textContent = `БД: ${dataset.length} камн${plural(dataset.length)}`;
+}
+function plural(n) { if(n%10===1&&n%100!==11)return 'ь'; if(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14))return 'я'; return 'ей'; }
+
+// ════ ADD / EDIT MODAL ════
+let modalImageData = null;
+
+function openAddModal() {
+  editingId = null;
+  modalImageData = null;
+  document.getElementById('modalTitle').textContent = 'Новый камень';
+  document.getElementById('stoneName').value = '';
+  document.getElementById('stoneDesc').value = '';
+  document.getElementById('stoneLink').value = '';
+  document.getElementById('modalPreviewImg').style.display = 'none';
+  document.getElementById('modalPhotoPlaceholder').style.display = 'flex';
+  document.getElementById('btnDeleteStone').style.display = 'none';
+  setLinkTypeRaw('url');
+  document.getElementById('addModal').style.display = 'flex';
+}
+
+function openEditModal(stone) {
+  editingId = stone.id;
+  modalImageData = stone.image || null;
+  document.getElementById('modalTitle').textContent = 'Редактировать';
+  document.getElementById('stoneName').value = stone.name;
+  document.getElementById('stoneDesc').value = stone.desc || '';
+  document.getElementById('stoneLink').value = stone.link || '';
+  if (stone.image) {
+    document.getElementById('modalPreviewImg').src = stone.image;
+    document.getElementById('modalPreviewImg').style.display = 'block';
+    document.getElementById('modalPhotoPlaceholder').style.display = 'none';
+  } else {
+    document.getElementById('modalPreviewImg').style.display = 'none';
+    document.getElementById('modalPhotoPlaceholder').style.display = 'flex';
+  }
+  setLinkTypeRaw(stone.linkType || 'url');
+  document.getElementById('btnDeleteStone').style.display = 'block';
+  document.getElementById('addModal').style.display = 'flex';
+  document.getElementById('detailModal').style.display = 'none';
+}
+
+function closeAddModal(e) {
+  if (e.target === document.getElementById('addModal')) closeAddModalDirect();
+}
+function closeAddModalDirect() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+function setLinkType(btn, type) {
+  document.querySelectorAll('.link-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentLinkType = type;
+  const placeholders = { url:'https://example.com', tg:'@username или t.me/...', email:'info@example.com', phone:'+7 900 000-00-00', text:'Любой текст' };
+  document.getElementById('stoneLink').placeholder = placeholders[type];
+}
+function setLinkTypeRaw(type) {
+  currentLinkType = type;
+  document.querySelectorAll('.link-type-btn').forEach((b,i) => {
+    const types = ['url','tg','email','phone','text'];
+    b.classList.toggle('active', types[i]===type);
+  });
+  const placeholders = { url:'https://example.com', tg:'@username или t.me/...', email:'info@example.com', phone:'+7 900 000-00-00', text:'Любой текст' };
+  document.getElementById('stoneLink').placeholder = placeholders[type]||'';
+}
+
+function onModalPhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    modalImageData = ev.target.result;
+    document.getElementById('modalPreviewImg').src = modalImageData;
+    document.getElementById('modalPreviewImg').style.display = 'block';
+    document.getElementById('modalPhotoPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+async function saveStone() {
+  const name = document.getElementById('stoneName').value.trim();
+  if (!name) { alert('Введите название камня'); return; }
+
+  let features = null;
+  if (modalImageData) {
+    features = await getImageFeatures(modalImageData);
+  }
+
+  if (editingId) {
+    const idx = dataset.findIndex(s => s.id === editingId);
+    if (idx !== -1) {
+      dataset[idx] = {
+        ...dataset[idx],
+        name,
+        desc: document.getElementById('stoneDesc').value.trim(),
+        link: document.getElementById('stoneLink').value.trim(),
+        linkType: currentLinkType,
+        image: modalImageData || dataset[idx].image,
+        features: features || dataset[idx].features,
+      };
+    }
+  } else {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    dataset.push({
+      id, name,
+      desc: document.getElementById('stoneDesc').value.trim(),
+      link: document.getElementById('stoneLink').value.trim(),
+      linkType: currentLinkType,
+      image: modalImageData,
+      features,
+    });
+  }
+
+  save();
+  renderDataset();
+  closeAddModalDirect();
+}
+
+function deleteStone() {
+  if (!confirm('Удалить этот камень из датасета?')) return;
+  dataset = dataset.filter(s => s.id !== editingId);
+  save();
+  renderDataset();
+  closeAddModalDirect();
+}
+
+// ════ DETAIL MODAL ════
+function openDetail(stone) {
+  detailStone = stone;
+  const img = document.getElementById('detailImg');
+  if (stone.image) { img.src = stone.image; img.style.display = 'block'; }
+  else { img.style.display = 'none'; }
+  document.getElementById('detailName').textContent = stone.name;
+  document.getElementById('detailDesc').textContent = stone.desc || '';
+  document.getElementById('detailHash').textContent = stone.features ? 'hash: ' + hashFeatures(stone.features) : '';
+
+  const icons = { url:'🔗', tg:'✈️', email:'✉️', phone:'📞', text:'📝' };
+  const labels = { url:'Открыть сайт', tg:'Telegram', email:'Email', phone:'Телефон', text:'Контакт' };
+  document.getElementById('detailContactIcon').textContent = icons[stone.linkType] || '🔗';
+  document.getElementById('detailContactLabel').textContent = labels[stone.linkType] || 'Перейти';
+  document.getElementById('detailContactValue').textContent = stone.link || '—';
+  const btn = document.getElementById('detailContactBtn');
+  btn.href = stone.link ? buildHref(stone.linkType, stone.link) : '#';
+
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function closeDetailModal(e) {
+  if (e.target === document.getElementById('detailModal')) document.getElementById('detailModal').style.display='none';
+}
+
+function editFromDetail() {
+  openEditModal(detailStone);
+}
+</script>
+</body>
+</html>
