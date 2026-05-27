@@ -6,14 +6,12 @@
 <title>JadeKey</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-family: -apple-system, 'SF Pro Text', sans-serif; overflow: hidden; }
-
 .screen { display: none; position: absolute; inset: 0; }
 .screen.active { display: flex; flex-direction: column; }
-
-/* HOME */
 #home { align-items: center; justify-content: flex-end; padding-bottom: 48px; }
 .home-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .home-logo-wrap { text-align: center; }
@@ -26,8 +24,6 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .btn-row { display: flex; gap: 12px; }
 .btn-secondary { flex: 1; padding: 16px; background: rgba(255,255,255,0.08); border: none; border-radius: 14px; color: #c4a96a; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
 .btn-secondary:active { opacity: 0.7; }
-
-/* SCAN */
 #scan { background: #000; }
 .scan-video-wrap { flex: 1; position: relative; overflow: hidden; }
 #scanVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -43,16 +39,14 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .scan-frame-inner::before { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
 .scan-frame-inner::after { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
 .scan-hint { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; padding: 0 40px; }
-.scan-bottom { width: 100%; padding: 16px 20px 32px; background: #0d0d0d; pointer-events: all; }
+.scan-bottom { width: 100%; padding: 16px 20px 32px; background: #0d0d0d; }
 .scan-result-badge { background: rgba(0,0,0,0.75); border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: none; }
 .scan-result-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
 .scan-result-pct { font-size: 13px; color: #c4a96a; }
 .scan-btn { width: 100%; padding: 18px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
 .scan-btn:disabled { background: rgba(196,169,106,0.3); color: rgba(240,237,230,0.3); }
-
-/* ADD STONE */
 #addStone { background: #0d0d0d; }
-.add-video-wrap { flex: 0 0 40vh; position: relative; overflow: hidden; background: #000; }
+.add-video-wrap { flex: 0 0 38vh; position: relative; overflow: hidden; background: #000; }
 #addVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
 .add-counter { position: absolute; top: 16px; left: 0; right: 0; text-align: center; }
 .add-counter-badge { display: inline-block; background: rgba(0,0,0,0.65); border-radius: 20px; padding: 6px 16px; font-size: 14px; color: rgba(255,255,255,0.9); }
@@ -70,8 +64,6 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .add-save-btn { width: 100%; padding: 16px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-family: inherit; transition: opacity 0.15s; }
 .add-save-btn:disabled { opacity: 0.3; cursor: default; }
 .add-cancel-btn { width: 100%; padding: 12px; background: transparent; border: none; color: rgba(240,237,230,0.4); font-size: 14px; cursor: pointer; font-family: inherit; }
-
-/* CONTACT FIELDS SELECTOR */
 .contact-section { margin-bottom: 12px; }
 .contact-section-title { font-size: 13px; color: rgba(240,237,230,0.4); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
 .contact-toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
@@ -79,8 +71,6 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .contact-toggle.active { background: rgba(196,169,106,0.15); border-color: rgba(196,169,106,0.5); color: #c4a96a; }
 .contact-field-wrap { display: none; margin-bottom: 10px; }
 .contact-field-wrap.visible { display: block; }
-
-/* MY STONES */
 #myStones { background: #0d0d0d; }
 .list-header { padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .list-title { font-size: 28px; font-weight: 700; }
@@ -95,15 +85,11 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .stone-del { padding: 6px 10px; background: none; border: none; color: rgba(196,169,106,0.6); font-size: 13px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
 .empty-list { text-align: center; padding: 60px 20px; color: rgba(240,237,230,0.3); }
 .empty-list .eg { font-size: 48px; margin-bottom: 14px; }
-
-/* ADMIN */
 #adminLogin { background: #0d0d0d; align-items: center; justify-content: center; padding: 40px 32px; }
 .admin-title { font-size: 28px; font-weight: 600; margin-bottom: 8px; text-align: center; }
 .admin-sub { font-size: 14px; color: rgba(240,237,230,0.4); text-align: center; margin-bottom: 36px; }
 .admin-err { font-size: 13px; color: #e05c5c; margin-top: -8px; margin-bottom: 14px; display: none; text-align: center; }
 .admin-out-btn { margin-top: 12px; width: 100%; padding: 14px; background: transparent; border: 1px solid rgba(224,92,92,0.3); border-radius: 12px; color: #e05c5c; font-size: 15px; cursor: pointer; font-family: inherit; }
-
-/* RESULT DETAIL */
 #resultDetail { background: #0d0d0d; overflow-y: auto; }
 .detail-img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
 .detail-body { padding: 24px 20px 48px; }
@@ -111,32 +97,26 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .detail-match-lbl { font-size: 12px; color: rgba(240,237,230,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
 .detail-name { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
 .detail-hash { font-size: 11px; color: rgba(196,169,106,0.4); letter-spacing: 0.08em; word-break: break-all; margin-bottom: 20px; font-family: 'SF Mono', monospace; padding: 10px 14px; background: rgba(196,169,106,0.06); border-radius: 8px; }
-/* CONTACTS */
 .contacts-block { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
-.contact-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; text-decoration: none; color: #f0ede6; transition: background 0.15s; }
+.contact-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; color: #f0ede6; cursor: pointer; transition: background 0.15s; }
 .contact-item:active { background: rgba(255,255,255,0.1); }
 .contact-ico { width: 36px; height: 36px; border-radius: 50%; background: rgba(196,169,106,0.12); border: 1px solid rgba(196,169,106,0.25); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
 .contact-info { flex: 1; min-width: 0; }
 .contact-label { font-size: 11px; color: rgba(240,237,230,0.4); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
 .contact-value { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* QR */
+.contact-arrow { font-size: 16px; color: rgba(196,169,106,0.5); flex-shrink: 0; }
 .qr-block { display: flex; flex-direction: column; align-items: center; padding: 20px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; margin-bottom: 20px; }
 .qr-title { font-size: 11px; color: rgba(240,237,230,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; }
-#qrCanvas { border-radius: 8px; }
 .detail-back { width: 100%; padding: 16px; background: rgba(255,255,255,0.07); border: none; border-radius: 14px; color: rgba(240,237,230,0.7); font-size: 16px; cursor: pointer; font-family: inherit; }
-
-/* VEIL */
 .veil { position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
 .veil-ring { width: 40px; height: 40px; border: 2px solid rgba(196,169,106,0.2); border-top-color: #c4a96a; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .veil-lbl { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #c4a96a; }
-
 input[type=file] { display: none; }
 </style>
 </head>
 <body>
 
-<!-- HOME -->
 <div class="screen active" id="home">
   <div class="home-bg">
     <div class="home-logo-wrap">
@@ -154,7 +134,6 @@ input[type=file] { display: none; }
   </div>
 </div>
 
-<!-- SCAN -->
 <div class="screen" id="scan">
   <div class="scan-video-wrap">
     <video id="scanVideo" autoplay playsinline muted></video>
@@ -177,7 +156,6 @@ input[type=file] { display: none; }
   </div>
 </div>
 
-<!-- ADD STONE -->
 <div class="screen" id="addStone">
   <div class="add-video-wrap">
     <video id="addVideo" autoplay playsinline muted></video>
@@ -189,8 +167,6 @@ input[type=file] { display: none; }
     <div class="add-form-sub" id="addFormSub">Сделайте минимум 3 снимка с разных углов</div>
     <button class="add-shoot-btn" onclick="shootPhoto()">📷 Снять</button>
     <input class="field" id="addName" placeholder="Название камня" autocomplete="off">
-
-    <!-- CONTACT FIELDS -->
     <div class="contact-section">
       <div class="contact-section-title">Контакты (выберите нужные)</div>
       <div class="contact-toggles">
@@ -203,7 +179,7 @@ input[type=file] { display: none; }
         <input class="field" id="addPhone" placeholder="+7 999 000 00 00" autocomplete="off" style="margin-bottom:0">
       </div>
       <div class="contact-field-wrap" id="wrap-tg">
-        <input class="field" id="addTg" placeholder="@username или t.me/..." autocomplete="off" style="margin-bottom:0">
+        <input class="field" id="addTg" placeholder="@username" autocomplete="off" style="margin-bottom:0">
       </div>
       <div class="contact-field-wrap" id="wrap-email">
         <input class="field" id="addEmail" placeholder="email@example.com" autocomplete="off" style="margin-bottom:0">
@@ -212,13 +188,11 @@ input[type=file] { display: none; }
         <input class="field" id="addSite" placeholder="https://..." autocomplete="off" style="margin-bottom:0">
       </div>
     </div>
-
     <button class="add-save-btn" id="addSaveBtn" onclick="saveNewStone()" disabled>Сохранить</button>
     <button class="add-cancel-btn" onclick="goHome()">Отмена</button>
   </div>
 </div>
 
-<!-- MY STONES -->
 <div class="screen" id="myStones">
   <div class="list-header">
     <div class="list-title">Мои камни</div>
@@ -227,7 +201,6 @@ input[type=file] { display: none; }
   <div class="stones-list" id="stonesList"></div>
 </div>
 
-<!-- ADMIN LOGIN -->
 <div class="screen" id="adminLogin">
   <button style="position:absolute;top:20px;left:20px;background:none;border:none;color:rgba(240,237,230,0.5);font-size:22px;cursor:pointer" onclick="goHome()">✕</button>
   <div class="admin-title">Вход</div>
@@ -238,7 +211,6 @@ input[type=file] { display: none; }
   <button class="admin-out-btn" id="logoutBtn" style="display:none;width:100%;max-width:320px;" onclick="doLogout()">Выйти из аккаунта</button>
 </div>
 
-<!-- RESULT DETAIL -->
 <div class="screen" id="resultDetail">
   <img id="detailImg" class="detail-img" style="display:none">
   <div class="detail-body">
@@ -265,16 +237,25 @@ const THRESHOLD = 0.76;
 const MIN_SHOTS = 3;
 const MAX_SHOTS = 7;
 
-let dataset = [];
-let isAdmin = false;
-let sharedStream = null;
-let addShots = [];
+let dataset = [], isAdmin = false, sharedStream = null, addShots = [];
 let activeContacts = new Set();
 
 if (sessionStorage.getItem('jk_admin')) isAdmin = true;
 loadData();
 
-// CONTACT TOGGLE
+// Открыть ссылку через Telegram WebApp или обычный браузер
+function openLink(url) {
+  try {
+    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+      Telegram.WebApp.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  } catch(e) {
+    window.open(url, '_blank');
+  }
+}
+
 function toggleContact(key) {
   const tog = document.getElementById('tog-' + key);
   const wrap = document.getElementById('wrap-' + key);
@@ -289,7 +270,6 @@ function toggleContact(key) {
   }
 }
 
-// FIRESTORE
 function fsVal(v) {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'string') return { stringValue: v };
@@ -332,7 +312,6 @@ async function fsDelete(id) {
   await fetch(BASE + '/stones/' + id + '?key=' + API_KEY, { method: 'DELETE' });
 }
 
-// NAV
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -341,13 +320,8 @@ function goHome() { showScreen('home'); }
 function goScan() { showScreen('scan'); startCam('scanVideo'); }
 function goAdd() {
   if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
-  addShots = [];
-  activeContacts = new Set();
-  document.getElementById('addName').value = '';
-  document.getElementById('addPhone').value = '';
-  document.getElementById('addTg').value = '';
-  document.getElementById('addEmail').value = '';
-  document.getElementById('addSite').value = '';
+  addShots = []; activeContacts = new Set();
+  ['addName','addPhone','addTg','addEmail','addSite'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('addCounter').textContent = '0/7 фото';
   document.getElementById('addSaveBtn').disabled = true;
   ['phone','tg','email','site'].forEach(k => {
@@ -360,57 +334,39 @@ function goAdd() {
 }
 function goMyStones() {
   if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
-  renderStonesList();
-  showScreen('myStones');
+  renderStonesList(); showScreen('myStones');
 }
-
 async function startCam(videoId) {
   const v = document.getElementById(videoId);
   try {
     if (sharedStream) { sharedStream.getTracks().forEach(t => t.stop()); sharedStream = null; }
-    sharedStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } }
-    });
-    v.srcObject = sharedStream;
-    await v.play();
+    sharedStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } } });
+    v.srcObject = sharedStream; await v.play();
     const track = sharedStream.getVideoTracks()[0];
-    if (track && track.applyConstraints) {
-      try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {}
-    }
+    if (track && track.applyConstraints) { try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {} }
     if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Наведите на камень и нажмите кнопку';
   } catch(e) {
     if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Камера недоступна';
   }
 }
-
-// ADMIN
 function tryLogin() {
   if (document.getElementById('adminPass').value === ADMIN_PASS) {
     isAdmin = true; sessionStorage.setItem('jk_admin', '1');
     document.getElementById('adminErr').style.display = 'none';
-    document.getElementById('adminPass').value = '';
-    goHome();
+    document.getElementById('adminPass').value = ''; goHome();
   } else { document.getElementById('adminErr').style.display = 'block'; }
 }
 function doLogout() { isAdmin = false; sessionStorage.removeItem('jk_admin'); goHome(); }
-function updateAdminUI() {
-  document.getElementById('logoutBtn').style.display = isAdmin ? 'block' : 'none';
-}
+function updateAdminUI() { document.getElementById('logoutBtn').style.display = isAdmin ? 'block' : 'none'; }
 
-// EMBED
 async function getEmbedding(dataUrl) {
-  const resp = await fetch(EMBED_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: dataUrl })
-  });
-  if (!resp.ok) throw new Error('Embed server error: ' + resp.status);
+  const resp = await fetch(EMBED_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl }) });
+  if (!resp.ok) throw new Error('Embed error: ' + resp.status);
   const j = await resp.json();
   if (j.error) throw new Error(j.error);
   return j.embedding;
 }
 
-// SHOOT
 async function shootPhoto() {
   if (addShots.length >= MAX_SHOTS) return;
   const v = document.getElementById('addVideo');
@@ -423,13 +379,10 @@ async function shootPhoto() {
   try {
     const embedding = await getEmbedding(dataUrl);
     addShots.push({ dataUrl, features: embedding });
-    renderStrip();
-    updateAddCounter();
-  } catch(e) {
-    alert('Ошибка сервера: ' + e.message);
-  } finally { hideVeil(); }
+    renderStrip(); updateAddCounter();
+  } catch(e) { alert('Ошибка сервера: ' + e.message); }
+  finally { hideVeil(); }
 }
-
 function renderStrip() {
   const strip = document.getElementById('shotsStrip');
   strip.innerHTML = '';
@@ -450,8 +403,6 @@ function updateAddCounter() {
   document.getElementById('addSaveBtn').disabled = n < MIN_SHOTS;
   document.getElementById('addFormSub').textContent = n >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов';
 }
-
-// SAVE
 async function saveNewStone() {
   const name = document.getElementById('addName').value.trim();
   if (!name) { alert('Введите название'); return; }
@@ -464,32 +415,15 @@ async function saveNewStone() {
     if (activeContacts.has('tg')) contacts.tg = document.getElementById('addTg').value.trim();
     if (activeContacts.has('email')) contacts.email = document.getElementById('addEmail').value.trim();
     if (activeContacts.has('site')) contacts.site = document.getElementById('addSite').value.trim();
-
-    const stoneData = {
-      name,
-      contacts: JSON.stringify(contacts),
-      createdAt: Date.now(),
-      shotsCount: addShots.length,
-      coverImage: tinyCover,
-      features: addShots[0].features,
-      shotsFeatures: addShots.map((s, i) => ({ idx: i, f: s.features }))
-    };
+    const stoneData = { name, contacts: JSON.stringify(contacts), createdAt: Date.now(), shotsCount: addShots.length, coverImage: tinyCover, features: addShots[0].features, shotsFeatures: addShots.map((s, i) => ({ idx: i, f: s.features })) };
     const result = await fsAdd(stoneData);
     if (result.error) { hideVeil(); alert('Firebase ошибка: ' + JSON.stringify(result.error)); return; }
-    await loadData();
-    hideVeil();
-    renderStonesList();
-    showScreen('myStones');
+    await loadData(); hideVeil(); renderStonesList(); showScreen('myStones');
   } catch(e) { hideVeil(); alert('Ошибка: ' + e.message); }
 }
-
-// STONES LIST
 function renderStonesList() {
   const list = document.getElementById('stonesList');
-  if (dataset.length === 0) {
-    list.innerHTML = '<div class="empty-list"><div class="eg">◇</div><p>Камней пока нет</p></div>';
-    return;
-  }
+  if (dataset.length === 0) { list.innerHTML = '<div class="empty-list"><div class="eg">◇</div><p>Камней пока нет</p></div>'; return; }
   list.innerHTML = '';
   dataset.forEach(s => {
     const row = document.createElement('div'); row.className = 'stone-row';
@@ -502,14 +436,8 @@ function renderStonesList() {
 async function delStone(id, e) {
   e.stopPropagation();
   if (!confirm('Удалить?')) return;
-  showVeil('Удаление…');
-  await fsDelete(id);
-  await loadData();
-  hideVeil();
-  renderStonesList();
+  showVeil('Удаление…'); await fsDelete(id); await loadData(); hideVeil(); renderStonesList();
 }
-
-// SCAN
 async function doScan() {
   if (dataset.length === 0) { document.getElementById('scanHint').textContent = 'База пуста'; return; }
   const v = document.getElementById('scanVideo');
@@ -522,23 +450,18 @@ async function doScan() {
   c.getContext('2d').drawImage(v, 0, 0);
   const src = await compressCanvas(c);
   let qf;
-  try {
-    qf = await getEmbedding(src);
-  } catch(e) {
+  try { qf = await getEmbedding(src); }
+  catch(e) {
     document.getElementById('scanBtn').disabled = false;
     document.getElementById('scanBtn').textContent = 'Идентифицировать';
-    document.getElementById('scanHint').textContent = 'Ошибка: ' + e.message;
-    return;
+    document.getElementById('scanHint').textContent = 'Ошибка: ' + e.message; return;
   }
   let best = null, bestScore = -1;
   for (const stone of dataset) {
     const allF = [];
     if (stone.features && stone.features.length) allF.push(stone.features);
     if (stone.shotsFeatures) stone.shotsFeatures.forEach(sf => { if (sf && sf.f && sf.f.length) allF.push(sf.f); });
-    for (const f of allF) {
-      const sc = cosine(qf, f);
-      if (sc > bestScore) { bestScore = sc; best = stone; }
-    }
+    for (const f of allF) { const sc = cosine(qf, f); if (sc > bestScore) { bestScore = sc; best = stone; } }
   }
   document.getElementById('scanBtn').disabled = false;
   document.getElementById('scanBtn').textContent = 'Идентифицировать';
@@ -554,64 +477,51 @@ async function doScan() {
   }
 }
 
-// RESULT DETAIL
 function showResultDetail(stone, score) {
   const img = document.getElementById('detailImg');
-  if (stone.coverImage) { img.src = stone.coverImage; img.style.display = 'block'; }
-  else img.style.display = 'none';
-
+  if (stone.coverImage) { img.src = stone.coverImage; img.style.display = 'block'; } else img.style.display = 'none';
   document.getElementById('detailPct').textContent = (score*100).toFixed(1) + '%';
   document.getElementById('detailName').textContent = stone.name;
   document.getElementById('detailHash').textContent = stone.features ? 'ID: ' + hashF(stone.features) : '';
 
-  // Contacts
   const contacts = stone.contacts ? JSON.parse(stone.contacts) : {};
   const block = document.getElementById('detailContacts');
   block.innerHTML = '';
 
   const defs = [
-    { key: 'phone', ico: '📞', label: 'Телефон', href: v => 'tel:' + v },
-    { key: 'tg',    ico: '✈️', label: 'Telegram', href: v => 'https://t.me/' + v.replace('@','') },
-    { key: 'email', ico: '✉️', label: 'Email',    href: v => 'mailto:' + v },
-    { key: 'site',  ico: '🔗', label: 'Сайт',     href: v => v.startsWith('http') ? v : 'https://' + v },
+    { key: 'phone', ico: '📞', label: 'Телефон', getUrl: v => 'tel:' + v },
+    { key: 'tg',    ico: '✈️', label: 'Telegram', getUrl: v => 'https://t.me/' + v.replace('@','') },
+    { key: 'email', ico: '✉️', label: 'Email',    getUrl: v => 'mailto:' + v },
+    { key: 'site',  ico: '🔗', label: 'Сайт',     getUrl: v => v.startsWith('http') ? v : 'https://' + v },
   ];
 
   let qrData = stone.name + '\n';
   let hasContacts = false;
 
-  defs.forEach(({ key, ico, label, href }) => {
+  defs.forEach(({ key, ico, label, getUrl }) => {
     const val = contacts[key];
     if (!val) return;
     hasContacts = true;
     qrData += label + ': ' + val + '\n';
-    const a = document.createElement('a');
-    a.className = 'contact-item';
-    a.href = href(val);
-    a.target = '_blank';
-    a.innerHTML = `<div class="contact-ico">${ico}</div><div class="contact-info"><div class="contact-label">${label}</div><div class="contact-value">${esc(val)}</div></div>`;
-    block.appendChild(a);
+    const url = getUrl(val);
+    const div = document.createElement('div');
+    div.className = 'contact-item';
+    div.innerHTML = `<div class="contact-ico">${ico}</div><div class="contact-info"><div class="contact-label">${label}</div><div class="contact-value">${esc(val)}</div></div><div class="contact-arrow">›</div>`;
+    div.onclick = () => openLink(url);
+    block.appendChild(div);
   });
 
-  // QR
   const qrBlock = document.getElementById('qrBlock');
   const qrDiv = document.getElementById('qrCanvas');
   qrDiv.innerHTML = '';
   if (hasContacts) {
     qrBlock.style.display = 'flex';
-    new QRCode(qrDiv, {
-      text: qrData.trim(),
-      width: 180, height: 180,
-      colorDark: '#1a1a1a', colorLight: '#f5f2eb',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  } else {
-    qrBlock.style.display = 'none';
-  }
+    new QRCode(qrDiv, { text: qrData.trim(), width: 180, height: 180, colorDark: '#1a1a1a', colorLight: '#f5f2eb', correctLevel: QRCode.CorrectLevel.M });
+  } else { qrBlock.style.display = 'none'; }
 
   showScreen('resultDetail');
 }
 
-// UTILS
 function cosine(a, b) {
   let dot=0, na=0, nb=0;
   const len = Math.min(a.length, b.length);
