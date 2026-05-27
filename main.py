@@ -9,7 +9,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from PIL import Image
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=".", static_url_path="")
+
 CORS(app)
 
 IMAGE_SIZE   = 224
@@ -60,7 +61,11 @@ def l2_normalize(v):
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok"})@app.route("/")
+@app.route("/")
+def index():
+    return app.send_static_file("jadekey-tma.html")
+
 
 @app.route("/embed", methods=["POST"])
 def embed():
