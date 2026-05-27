@@ -261,6 +261,7 @@ async function initCamera() {
     }
   } catch(e) { console.log('Camera init:', e.message); }
 }
+
 // FIRESTORE REST
 function fsVal(v) {
   if (v === null || v === undefined) return { nullValue: null };
@@ -314,7 +315,6 @@ function showScreen(id) {
 }
 
 function goHome() {
-  // Don't stop stream, keep it alive
   showScreen('home');
 }
 
@@ -344,7 +344,6 @@ function goMyStones() {
 async function startCam(videoId) {
   const v = document.getElementById(videoId);
   try {
-    // Stop any existing stream
     if (sharedStream) {
       sharedStream.getTracks().forEach(t => t.stop());
       sharedStream = null;
@@ -358,7 +357,6 @@ async function startCam(videoId) {
     if (track && track.applyConstraints) {
       try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {}
     }
-    // Clear any error hint
     if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Наведите на камень и нажмите кнопку';
   } catch(e) {
     if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Камера недоступна — разрешите доступ';
@@ -419,7 +417,7 @@ function updateAddCounter() {
   document.getElementById('addFormSub').textContent = n >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов';
 }
 
-// SAVE
+// SAVE — FIX: shotsFeatures stored as array of objects {idx, f:[...]} to avoid nested arrays
 async function saveNewStone() {
   const name = document.getElementById('addName').value.trim();
   if (!name) { alert('Введите название'); return; }
@@ -434,7 +432,8 @@ async function saveNewStone() {
       shotsCount: addShots.length,
       coverImage: tinyCover,
       features: addShots[0].features,
-      shotsFeatures: addShots.map(s => s.features)
+      // FIX: wrap each features array in an object to avoid nested arrays (Firestore limitation)
+      shotsFeatures: addShots.map((s, i) => ({ idx: i, f: s.features }))
     };
     const result = await fsAdd(stoneData);
     if (result.error) {
@@ -479,7 +478,7 @@ async function delStone(id, e) {
   renderStonesList();
 }
 
-// SCAN
+// SCAN — FIX: read shotsFeatures as array of objects {idx, f:[...]}
 async function doScan() {
   if (dataset.length === 0) {
     document.getElementById('scanHint').textContent = 'База пуста — добавьте камни';
@@ -502,7 +501,8 @@ async function doScan() {
   for (const stone of dataset) {
     const allF = [];
     if (stone.features && stone.features.length) allF.push(stone.features);
-    if (stone.shotsFeatures) stone.shotsFeatures.forEach(f => { if (f && f.length) allF.push(f); });
+    // FIX: shotsFeatures is now array of {idx, f:[...]} objects
+    if (stone.shotsFeatures) stone.shotsFeatures.forEach(sf => { if (sf && sf.f && sf.f.length) allF.push(sf.f); });
     for (const f of allF) {
       const sc = cosine(qf, f);
       if (sc > bestScore) { bestScore = sc; best = stone; }
