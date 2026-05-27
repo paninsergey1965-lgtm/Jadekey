@@ -490,10 +490,17 @@ async function doScan() {
     document.getElementById('scanBadgeName').textContent = best.name;
     document.getElementById('scanBadgePct').textContent = (bestScore*100).toFixed(1) + '% совпадение';
     document.getElementById('scanBadge').style.display = 'block';
-    setTimeout(() => showResultDetail(best, bestScore), 800);
+    document.getElementById('scanBadge').onclick = () => showResultDetail(best, bestScore);
+    document.getElementById('scanBadge').style.cursor = 'pointer';
+    const btn = document.getElementById('scanBtn');
+    btn.textContent = 'Показать результат →';
+    btn.disabled = false;
+    btn.onclick = () => showResultDetail(best, bestScore);
   } else {
     document.getElementById('scanHint').textContent = '∅ Не найдено (' + (bestScore*100).toFixed(1) + '%)';
     document.getElementById('scanBadge').style.display = 'none';
+    document.getElementById('scanBtn').textContent = 'Идентифицировать';
+    document.getElementById('scanBtn').onclick = doScan;
   }
 }
 
