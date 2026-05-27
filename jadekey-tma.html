@@ -426,15 +426,16 @@ async function saveNewStone() {
   if (addShots.length < MIN_SHOTS) return;
   showVeil('Сохранение…');
   try {
+    // Only store features + tiny cover image to stay under Firestore 1MB limit
+    const tinyCover = await makeTiny(addShots[0].dataUrl, 200);
     await fsAdd({
       name,
       link: document.getElementById('addLink').value.trim(),
       createdAt: Date.now(),
       shotsCount: addShots.length,
-      coverImage: addShots[0].dataUrl,
+      coverImage: tinyCover,
       features: addShots[0].features,
-      shotsFeatures: addShots.map(s => s.features),
-      shotsImages: addShots.map(s => s.dataUrl)
+      shotsFeatures: addShots.map(s => s.features)
     });
     await loadData();
     hideVeil();
@@ -600,6 +601,20 @@ function cosine(a,b){let dot=0,na=0,nb=0;const len=Math.min(a.length,b.length);f
 function hashF(f){if(!f||!f.length)return'—';return CryptoJS.SHA256(f.slice(0,20).map(v=>v.toFixed(3)).join(',')).toString().slice(0,16).toUpperCase();}
 async function compressCanvas(c){const max=480,scale=Math.min(max/c.width,max/c.height,1);const c2=document.createElement('canvas');c2.width=Math.round(c.width*scale);c2.height=Math.round(c.height*scale);c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);return c2.toDataURL('image/jpeg',0.68);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function makeTiny(src, maxSize) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxSize/img.width, maxSize/img.height, 1);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*scale);
+      c.height = Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.5));
+    };
+    img.src = src;
+  });
+}
 function showVeil(msg){let el=document.getElementById('veil');if(!el){el=document.createElement('div');el.id='veil';el.className='veil';el.innerHTML=`<div class="veil-ring"></div><div class="veil-lbl">${msg}</div>`;document.body.appendChild(el);}}
 function hideVeil(){const el=document.getElementById('veil');if(el)el.remove();}
 </script>
