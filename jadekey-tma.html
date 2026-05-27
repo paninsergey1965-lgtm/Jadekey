@@ -392,14 +392,6 @@ async function shootPhoto() {
   c.getContext('2d').drawImage(v, 0, 0);
   const dataUrl = await compressCanvas(c);
   const features = await getFeaturesFromUrl(dataUrl);
-  // Check diversity
-  for (const s of addShots) {
-    if (cosine(features, s.features) > 0.97) {
-      document.getElementById('addFormSub').textContent = 'Снимок слишком похож — смените угол';
-      setTimeout(() => { document.getElementById('addFormSub').textContent = addShots.length >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов'; }, 2000);
-      return;
-    }
-  }
   addShots.push({ dataUrl, features });
   renderStrip();
   updateAddCounter();
