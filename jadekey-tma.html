@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JadeKey</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-family: -apple-system, 'SF Pro Text', sans-serif; overflow: hidden; }
+.screen { display: none; position: absolute; inset: 0; }
+.screen.active { display: flex; flex-direction: column; }
+#home { align-items: center; justify-content: flex-end; padding-bottom: 48px; }
+.home-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.home-logo-wrap { text-align: center; }
+.home-glyph { font-size: 64px; opacity: 0.08; line-height: 1; margin-bottom: 24px; }
+.home-title { font-size: 42px; font-weight: 300; letter-spacing: -0.5px; color: #f0ede6; margin-bottom: 8px; }
+.home-sub { font-size: 15px; color: rgba(240,237,230,0.4); letter-spacing: 0.02em; }
+.home-btns { position: relative; z-index: 2; width: 100%; padding: 0 24px; display: flex; flex-direction: column; gap: 12px; }
+.btn-primary { width: 100%; padding: 18px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+.btn-primary:active { opacity: 0.8; }
+.btn-row { display: flex; gap: 12px; }
+.btn-secondary { flex: 1; padding: 16px; background: rgba(255,255,255,0.08); border: none; border-radius: 14px; color: #c4a96a; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+.btn-secondary:active { opacity: 0.7; }
+#scan { background: #000; }
+.scan-video-wrap { flex: 1; position: relative; overflow: hidden; }
+#scanVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 24px 0 20px; pointer-events: none; }
+.scan-top { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 20px; pointer-events: all; }
+.scan-back { width: 36px; height: 36px; background: rgba(0,0,0,0.5); border-radius: 50%; border: none; color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.scan-title-lbl { font-size: 14px; color: rgba(255,255,255,0.7); letter-spacing: 0.05em; text-transform: uppercase; }
+.scan-frame { width: 72%; aspect-ratio: 1; position: relative; }
+.scan-frame::before, .scan-frame::after { content: ''; position: absolute; width: 28px; height: 28px; border-color: rgba(196,169,106,0.8); border-style: solid; }
+.scan-frame::before { top: 0; left: 0; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+.scan-frame::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+.scan-frame-inner::before, .scan-frame-inner::after { content: ''; position: absolute; width: 28px; height: 28px; border-color: rgba(196,169,106,0.8); border-style: solid; }
+.scan-frame-inner::before { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+.scan-frame-inner::after { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+.scan-hint { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; padding: 0 40px; }
+.scan-bottom { width: 100%; padding: 16px 20px 32px; background: #0d0d0d; }
+.scan-result-badge { background: rgba(0,0,0,0.75); border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: none; }
+.scan-result-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.scan-result-pct { font-size: 13px; color: #c4a96a; }
+.scan-btn { width: 100%; padding: 18px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.scan-btn:disabled { background: rgba(196,169,106,0.3); color: rgba(240,237,230,0.3); }
+#addStone { background: #0d0d0d; }
+.add-video-wrap { flex: 0 0 38vh; position: relative; overflow: hidden; background: #000; }
+#addVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.add-counter { position: absolute; top: 16px; left: 0; right: 0; text-align: center; }
+.add-counter-badge { display: inline-block; background: rgba(0,0,0,0.65); border-radius: 20px; padding: 6px 16px; font-size: 14px; color: rgba(255,255,255,0.9); }
+.add-shots-strip { display: flex; gap: 6px; padding: 10px 16px; overflow-x: auto; background: #111; flex-shrink: 0; }
+.add-shots-strip::-webkit-scrollbar { display: none; }
+.shot-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(196,169,106,0.5); }
+.shot-empty { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; border: 1.5px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 18px; color: rgba(255,255,255,0.15); }
+.add-form { flex: 1; overflow-y: auto; padding: 14px 20px 20px; }
+.add-form-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.add-form-sub { font-size: 13px; color: rgba(240,237,230,0.4); margin-bottom: 14px; }
+.field { width: 100%; padding: 13px 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #f0ede6; font-size: 15px; outline: none; margin-bottom: 10px; font-family: inherit; transition: border-color 0.2s; }
+.field:focus { border-color: rgba(196,169,106,0.6); }
+.field::placeholder { color: rgba(240,237,230,0.3); }
+.add-shoot-btn { width: 100%; padding: 14px; background: rgba(196,169,106,0.15); border: 1.5px solid rgba(196,169,106,0.4); border-radius: 14px; color: #c4a96a; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px; font-family: inherit; }
+.add-save-btn { width: 100%; padding: 16px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-family: inherit; transition: opacity 0.15s; }
+.add-save-btn:disabled { opacity: 0.3; cursor: default; }
+.add-cancel-btn { width: 100%; padding: 12px; background: transparent; border: none; color: rgba(240,237,230,0.4); font-size: 14px; cursor: pointer; font-family: inherit; }
+.contact-section { margin-bottom: 12px; }
+.contact-section-title { font-size: 13px; color: rgba(240,237,230,0.4); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+.contact-toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.contact-toggle { padding: 7px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; color: rgba(240,237,230,0.5); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.contact-toggle.active { background: rgba(196,169,106,0.15); border-color: rgba(196,169,106,0.5); color: #c4a96a; }
+.contact-field-wrap { display: none; margin-bottom: 10px; }
+.contact-field-wrap.visible { display: block; }
+#myStones { background: #0d0d0d; }
+.list-header { padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.list-title { font-size: 28px; font-weight: 700; }
+.list-back { background: none; border: none; color: #c4a96a; font-size: 15px; cursor: pointer; font-family: inherit; }
+.stones-list { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+.stone-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.stone-thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: rgba(255,255,255,0.06); }
+.stone-thumb-ph { width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 22px; color: rgba(255,255,255,0.2); }
+.stone-info { flex: 1; min-width: 0; }
+.stone-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stone-meta { font-size: 12px; color: rgba(240,237,230,0.4); margin-top: 2px; }
+.stone-del { padding: 6px 10px; background: none; border: none; color: rgba(196,169,106,0.6); font-size: 13px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.empty-list { text-align: center; padding: 60px 20px; color: rgba(240,237,230,0.3); }
+.empty-list .eg { font-size: 48px; margin-bottom: 14px; }
+#adminLogin { background: #0d0d0d; align-items: center; justify-content: center; padding: 40px 32px; }
+.admin-title { font-size: 28px; font-weight: 600; margin-bottom: 8px; text-align: center; }
+.admin-sub { font-size: 14px; color: rgba(240,237,230,0.4); text-align: center; margin-bottom: 36px; }
+.admin-err { font-size: 13px; color: #e05c5c; margin-top: -8px; margin-bottom: 14px; display: none; text-align: center; }
+.admin-out-btn { margin-top: 12px; width: 100%; padding: 14px; background: transparent; border: 1px solid rgba(224,92,92,0.3); border-radius: 12px; color: #e05c5c; font-size: 15px; cursor: pointer; font-family: inherit; }
+#resultDetail { background: #0d0d0d; overflow-y: auto; }
+.detail-img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.detail-body { padding: 24px 20px 48px; }
+.detail-pct { font-size: 48px; font-weight: 300; color: #c4a96a; line-height: 1; margin-bottom: 4px; }
+.detail-match-lbl { font-size: 12px; color: rgba(240,237,230,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+.detail-name { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+.detail-hash { font-size: 11px; color: rgba(196,169,106,0.4); letter-spacing: 0.08em; word-break: break-all; margin-bottom: 20px; font-family: 'SF Mono', monospace; padding: 10px 14px; background: rgba(196,169,106,0.06); border-radius: 8px; }
+.contacts-block { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+.contact-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; color: #f0ede6; cursor: pointer; transition: background 0.15s; }
+.contact-item:active { background: rgba(255,255,255,0.1); }
+.contact-ico { width: 36px; height: 36px; border-radius: 50%; background: rgba(196,169,106,0.12); border: 1px solid rgba(196,169,106,0.25); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.contact-info { flex: 1; min-width: 0; }
+.contact-label { font-size: 11px; color: rgba(240,237,230,0.4); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+.contact-value { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-arrow { font-size: 16px; color: rgba(196,169,106,0.5); flex-shrink: 0; }
+.qr-block { display: flex; flex-direction: column; align-items: center; padding: 20px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; margin-bottom: 20px; }
+.qr-title { font-size: 11px; color: rgba(240,237,230,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; }
+.detail-back { width: 100%; padding: 16px; background: rgba(255,255,255,0.07); border: none; border-radius: 14px; color: rgba(240,237,230,0.7); font-size: 16px; cursor: pointer; font-family: inherit; }
+.veil { position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.veil-ring { width: 40px; height: 40px; border: 2px solid rgba(196,169,106,0.2); border-top-color: #c4a96a; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.veil-lbl { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #c4a96a; }
+input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="screen active" id="home">
+  <div class="home-bg">
+    <div class="home-logo-wrap">
+      <div class="home-glyph">◈</div>
+      <div class="home-title">JadeKey</div>
+      <div class="home-sub">A numbered stone collection</div>
+    </div>
+  </div>
+  <div class="home-btns">
+    <button class="btn-primary" onclick="goScan()">Scan a stone</button>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goAdd()">Добавить камень</button>
+      <button class="btn-secondary" onclick="goMyStones()">Мои камни</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scan">
+  <div class="scan-video-wrap">
+    <video id="scanVideo" autoplay playsinline muted></video>
+    <div class="scan-overlay">
+      <div class="scan-top">
+        <button class="scan-back" onclick="goHome()">✕</button>
+        <span class="scan-title-lbl">Сканирование</span>
+        <div style="width:36px"></div>
+      </div>
+      <div class="scan-frame"><div class="scan-frame-inner"></div></div>
+      <div class="scan-hint" id="scanHint">Наведите на камень и нажмите кнопку</div>
+    </div>
+  </div>
+  <div class="scan-bottom">
+    <div class="scan-result-badge" id="scanBadge">
+      <div class="scan-result-name" id="scanBadgeName"></div>
+      <div class="scan-result-pct" id="scanBadgePct"></div>
+    </div>
+    <button class="scan-btn" id="scanBtn" onclick="doScan()">Идентифицировать</button>
+  </div>
+</div>
+
+<div class="screen" id="addStone">
+  <div class="add-video-wrap">
+    <video id="addVideo" autoplay playsinline muted></video>
+    <div class="add-counter"><div class="add-counter-badge" id="addCounter">0/7 фото</div></div>
+  </div>
+  <div class="add-shots-strip" id="shotsStrip"></div>
+  <div class="add-form">
+    <div class="add-form-title">Добавить камень</div>
+    <div class="add-form-sub" id="addFormSub">Сделайте минимум 3 снимка с разных углов</div>
+    <button class="add-shoot-btn" onclick="shootPhoto()">📷 Снять</button>
+    <input class="field" id="addName" placeholder="Название камня" autocomplete="off">
+    <div class="contact-section">
+      <div class="contact-section-title">Контакты (выберите нужные)</div>
+      <div class="contact-toggles">
+        <button class="contact-toggle" onclick="toggleContact('phone')" id="tog-phone">📞 Телефон</button>
+        <button class="contact-toggle" onclick="toggleContact('tg')" id="tog-tg">✈️ Telegram</button>
+        <button class="contact-toggle" onclick="toggleContact('email')" id="tog-email">✉️ Email</button>
+        <button class="contact-toggle" onclick="toggleContact('site')" id="tog-site">🔗 Сайт</button>
+      </div>
+      <div class="contact-field-wrap" id="wrap-phone">
+        <input class="field" id="addPhone" placeholder="+7 999 000 00 00" autocomplete="off" style="margin-bottom:0">
+      </div>
+      <div class="contact-field-wrap" id="wrap-tg">
+        <input class="field" id="addTg" placeholder="@username" autocomplete="off" style="margin-bottom:0">
+      </div>
+      <div class="contact-field-wrap" id="wrap-email">
+        <input class="field" id="addEmail" placeholder="email@example.com" autocomplete="off" style="margin-bottom:0">
+      </div>
+      <div class="contact-field-wrap" id="wrap-site">
+        <input class="field" id="addSite" placeholder="https://..." autocomplete="off" style="margin-bottom:0">
+      </div>
+    </div>
+    <button class="add-save-btn" id="addSaveBtn" onclick="saveNewStone()" disabled>Сохранить</button>
+    <button class="add-cancel-btn" onclick="goHome()">Отмена</button>
+  </div>
+</div>
+
+<div class="screen" id="myStones">
+  <div class="list-header">
+    <div class="list-title">Мои камни</div>
+    <button class="list-back" onclick="goHome()">Назад</button>
+  </div>
+  <div class="stones-list" id="stonesList"></div>
+</div>
+
+<div class="screen" id="adminLogin">
+  <button style="position:absolute;top:20px;left:20px;background:none;border:none;color:rgba(240,237,230,0.5);font-size:22px;cursor:pointer" onclick="goHome()">✕</button>
+  <div class="admin-title">Вход</div>
+  <div class="admin-sub">Только владелец может добавлять камни</div>
+  <input class="field" type="password" id="adminPass" placeholder="Пароль" onkeydown="if(event.key==='Enter')tryLogin()" style="width:100%;max-width:320px;">
+  <div class="admin-err" id="adminErr">Неверный пароль</div>
+  <button class="btn-primary" onclick="tryLogin()" style="width:100%;max-width:320px;">Войти</button>
+  <button class="admin-out-btn" id="logoutBtn" style="display:none;width:100%;max-width:320px;" onclick="doLogout()">Выйти из аккаунта</button>
+</div>
+
+<div class="screen" id="resultDetail">
+  <img id="detailImg" class="detail-img" style="display:none">
+  <div class="detail-body">
+    <div class="detail-pct" id="detailPct"></div>
+    <div class="detail-match-lbl">Совпадение</div>
+    <div class="detail-name" id="detailName"></div>
+    <div class="detail-hash" id="detailHash"></div>
+    <div class="contacts-block" id="detailContacts"></div>
+    <div class="qr-block" id="qrBlock" style="display:none">
+      <div class="qr-title">QR-код визитки</div>
+      <div id="qrCanvas"></div>
+    </div>
+    <button class="detail-back" onclick="goScan()">← Сканировать ещё</button>
+  </div>
+</div>
+
+<script>
+const PROJECT = 'jadekey-46f37';
+const API_KEY = 'AIzaSyCmc4qJFC0rkFvcz7ZBG42ApnZfCcrrT20';
+const BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents';
+const ADMIN_PASS = 'jadekey2024';
+const EMBED_URL = 'https://jadekey.onrender.com/embed';
+const THRESHOLD = 0.76;
+const MIN_SHOTS = 3;
+const MAX_SHOTS = 7;
+
+let dataset = [], isAdmin = false, sharedStream = null, addShots = [];
+let activeContacts = new Set();
+
+if (sessionStorage.getItem('jk_admin')) isAdmin = true;
+loadData();
+
+function openLink(url) {
+  try {
+    if (url.startsWith('tel:')) {
+      const num = url.replace('tel:', '');
+      if (window.Telegram && Telegram.WebApp) {
+        Telegram.WebApp.showPopup({
+          title: 'Телефон',
+          message: num,
+          buttons: [{ type: 'default', text: 'Скопировать' }, { type: 'cancel', text: 'Закрыть' }]
+        }, (btn) => { if (btn !== 'cancel' && navigator.clipboard) navigator.clipboard.writeText(num); });
+      } else {
+        window.location.href = url;
+      }
+    } else if (url.startsWith('mailto:')) {
+      window.location.href = url;
+    } else if (url.startsWith('https://t.me/')) {
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+        Telegram.WebApp.openTelegramLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    } else {
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+        Telegram.WebApp.openLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+  } catch(e) {
+    window.open(url, '_blank');
+  }
+}
+
+function toggleContact(key) {
+  const tog = document.getElementById('tog-' + key);
+  const wrap = document.getElementById('wrap-' + key);
+  if (activeContacts.has(key)) {
+    activeContacts.delete(key);
+    tog.classList.remove('active');
+    wrap.classList.remove('visible');
+  } else {
+    activeContacts.add(key);
+    tog.classList.add('active');
+    wrap.classList.add('visible');
+  }
+}
+
+function fsVal(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'number') return { doubleValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(fsVal) } };
+  if (typeof v === 'object') { const f = {}; for (const k in v) f[k] = fsVal(v[k]); return { mapValue: { fields: f } }; }
+  return { stringValue: String(v) };
+}
+function fromFs(fields) {
+  if (!fields) return {};
+  const o = {};
+  for (const k in fields) {
+    const v = fields[k];
+    if ('stringValue' in v) o[k] = v.stringValue;
+    else if ('doubleValue' in v) o[k] = v.doubleValue;
+    else if ('integerValue' in v) o[k] = Number(v.integerValue);
+    else if ('booleanValue' in v) o[k] = v.booleanValue;
+    else if ('nullValue' in v) o[k] = null;
+    else if ('arrayValue' in v) o[k] = (v.arrayValue.values || []).map(x => fromFs({ _: x })['_']);
+    else if ('mapValue' in v) o[k] = fromFs(v.mapValue.fields || {});
+  }
+  return o;
+}
+async function loadData() {
+  try {
+    const r = await fetch(BASE + '/stones?key=' + API_KEY + '&pageSize=100');
+    const j = await r.json();
+    dataset = j.documents ? j.documents.map(d => ({ id: d.name.split('/').pop(), ...fromFs(d.fields) })) : [];
+  } catch(e) { dataset = []; }
+}
+async function fsAdd(data) {
+  const r = await fetch(BASE + '/stones?key=' + API_KEY, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(data).map(([k,v]) => [k, fsVal(v)])) })
+  });
+  return r.json();
+}
+async function fsDelete(id) {
+  await fetch(BASE + '/stones/' + id + '?key=' + API_KEY, { method: 'DELETE' });
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() { showScreen('home'); }
+function goScan() { showScreen('scan'); startCam('scanVideo'); }
+function goAdd() {
+  if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
+  addShots = []; activeContacts = new Set();
+  ['addName','addPhone','addTg','addEmail','addSite'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('addCounter').textContent = '0/7 фото';
+  document.getElementById('addSaveBtn').disabled = true;
+  ['phone','tg','email','site'].forEach(k => {
+    document.getElementById('tog-' + k).classList.remove('active');
+    document.getElementById('wrap-' + k).classList.remove('visible');
+  });
+  renderStrip();
+  showScreen('addStone');
+  startCam('addVideo');
+}
+function goMyStones() {
+  if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
+  renderStonesList(); showScreen('myStones');
+}
+async function startCam(videoId) {
+  const v = document.getElementById(videoId);
+  try {
+    if (sharedStream) { sharedStream.getTracks().forEach(t => t.stop()); sharedStream = null; }
+    sharedStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } } });
+    v.srcObject = sharedStream; await v.play();
+    const track = sharedStream.getVideoTracks()[0];
+    if (track && track.applyConstraints) { try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {} }
+    if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Наведите на камень и нажмите кнопку';
+  } catch(e) {
+    if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Камера недоступна';
+  }
+}
+function tryLogin() {
+  if (document.getElementById('adminPass').value === ADMIN_PASS) {
+    isAdmin = true; sessionStorage.setItem('jk_admin', '1');
+    document.getElementById('adminErr').style.display = 'none';
+    document.getElementById('adminPass').value = ''; goHome();
+  } else { document.getElementById('adminErr').style.display = 'block'; }
+}
+function doLogout() { isAdmin = false; sessionStorage.removeItem('jk_admin'); goHome(); }
+function updateAdminUI() { document.getElementById('logoutBtn').style.display = isAdmin ? 'block' : 'none'; }
+
+async function getEmbedding(dataUrl) {
+  const resp = await fetch(EMBED_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl }) });
+  if (!resp.ok) throw new Error('Embed error: ' + resp.status);
+  const j = await resp.json();
+  if (j.error) throw new Error(j.error);
+  return j.embedding;
+}
+
+async function shootPhoto() {
+  if (addShots.length >= MAX_SHOTS) return;
+  const v = document.getElementById('addVideo');
+  if (!v.srcObject) return;
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth || 640; c.height = v.videoHeight || 640;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const dataUrl = await compressCanvas(c);
+  showVeil('Анализ снимка…');
+  try {
+    const embedding = await getEmbedding(dataUrl);
+    addShots.push({ dataUrl, features: embedding });
+    renderStrip(); updateAddCounter();
+  } catch(e) { alert('Ошибка сервера: ' + e.message); }
+  finally { hideVeil(); }
+}
+function renderStrip() {
+  const strip = document.getElementById('shotsStrip');
+  strip.innerHTML = '';
+  addShots.forEach((s, i) => {
+    const img = document.createElement('img');
+    img.className = 'shot-thumb'; img.src = s.dataUrl;
+    img.onclick = () => { addShots.splice(i, 1); renderStrip(); updateAddCounter(); };
+    strip.appendChild(img);
+  });
+  for (let i = addShots.length; i < MAX_SHOTS; i++) {
+    const ph = document.createElement('div'); ph.className = 'shot-empty'; ph.textContent = '+';
+    strip.appendChild(ph);
+  }
+}
+function updateAddCounter() {
+  const n = addShots.length;
+  document.getElementById('addCounter').textContent = n + '/7 фото';
+  document.getElementById('addSaveBtn').disabled = n < MIN_SHOTS;
+  document.getElementById('addFormSub').textContent = n >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов';
+}
+async function saveNewStone() {
+  const name = document.getElementById('addName').value.trim();
+  if (!name) { alert('Введите название'); return; }
+  if (addShots.length < MIN_SHOTS) { alert('Нужно минимум ' + MIN_SHOTS + ' снимка'); return; }
+  showVeil('Сохранение…');
+  try {
+    const tinyCover = await makeTiny(addShots[0].dataUrl, 200);
+    const contacts = {};
+    if (activeContacts.has('phone')) contacts.phone = document.getElementById('addPhone').value.trim();
+    if (activeContacts.has('tg')) contacts.tg = document.getElementById('addTg').value.trim();
+    if (activeContacts.has('email')) contacts.email = document.getElementById('addEmail').value.trim();
+    if (activeContacts.has('site')) contacts.site = document.getElementById('addSite').value.trim();
+    const stoneData = { name, contacts: JSON.stringify(contacts), createdAt: Date.now(), shotsCount: addShots.length, coverImage: tinyCover, features: addShots[0].features, shotsFeatures: addShots.map((s, i) => ({ idx: i, f: s.features })) };
+    const result = await fsAdd(stoneData);
+    if (result.error) { hideVeil(); alert('Firebase ошибка: ' + JSON.stringify(result.error)); return; }
+    await loadData(); hideVeil(); renderStonesList(); showScreen('myStones');
+  } catch(e) { hideVeil(); alert('Ошибка: ' + e.message); }
+}
+function renderStonesList() {
+  const list = document.getElementById('stonesList');
+  if (dataset.length === 0) { list.innerHTML = '<div class="empty-list"><div class="eg">◇</div><p>Камней пока нет</p></div>'; return; }
+  list.innerHTML = '';
+  dataset.forEach(s => {
+    const row = document.createElement('div'); row.className = 'stone-row';
+    const thumb = s.coverImage ? `<img class="stone-thumb" src="${s.coverImage}">` : `<div class="stone-thumb-ph">◈</div>`;
+    const shots = s.shotsCount || 1;
+    row.innerHTML = `${thumb}<div class="stone-info"><div class="stone-name">${esc(s.name)}</div><div class="stone-meta">${shots} снимк${shots===1?'':shots<5?'а':'ов'}</div></div><button class="stone-del" onclick="delStone('${s.id}',event)">Удалить</button>`;
+    list.appendChild(row);
+  });
+}
+async function delStone(id, e) {
+  e.stopPropagation();
+  if (!confirm('Удалить?')) return;
+  showVeil('Удаление…'); await fsDelete(id); await loadData(); hideVeil(); renderStonesList();
+}
+async function doScan() {
+  if (dataset.length === 0) { document.getElementById('scanHint').textContent = 'База пуста'; return; }
+  const v = document.getElementById('scanVideo');
+  if (!v.srcObject || !v.videoWidth) { document.getElementById('scanHint').textContent = 'Камера не готова'; return; }
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('scanBtn').textContent = 'Анализ…';
+  document.getElementById('scanHint').textContent = 'Отправка на сервер…';
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const src = await compressCanvas(c);
+  let qf;
+  try { qf = await getEmbedding(src); }
+  catch(e) {
+    document.getElementById('scanBtn').disabled = false;
+    document.getElementById('scanBtn').textContent = 'Идентифицировать';
+    document.getElementById('scanHint').textContent = 'Ошибка: ' + e.message; return;
+  }
+  let best = null, bestScore = -1;
+  for (const stone of dataset) {
+    const allF = [];
+    if (stone.features && stone.features.length) allF.push(stone.features);
+    if (stone.shotsFeatures) stone.shotsFeatures.forEach(sf => { if (sf && sf.f && sf.f.length) allF.push(sf.f); });
+    for (const f of allF) { const sc = cosine(qf, f); if (sc > bestScore) { bestScore = sc; best = stone; } }
+  }
+  document.getElementById('scanBtn').disabled = false;
+  document.getElementById('scanBtn').textContent = 'Идентифицировать';
+  if (best && bestScore >= THRESHOLD) {
+    document.getElementById('scanHint').textContent = '✓ ' + best.name;
+    document.getElementById('scanBadgeName').textContent = best.name;
+    document.getElementById('scanBadgePct').textContent = (bestScore*100).toFixed(1) + '% совпадение';
+    document.getElementById('scanBadge').style.display = 'block';
+    setTimeout(() => showResultDetail(best, bestScore), 800);
+  } else {
+    document.getElementById('scanHint').textContent = '∅ Не найдено (' + (bestScore*100).toFixed(1) + '%)';
+    document.getElementById('scanBadge').style.display = 'none';
+  }
+}
+
+function showResultDetail(stone, score) {
+  const img = document.getElementById('detailImg');
+  if (stone.coverImage) { img.src = stone.coverImage; img.style.display = 'block'; } else img.style.display = 'none';
+  document.getElementById('detailPct').textContent = (score*100).toFixed(1) + '%';
+  document.getElementById('detailName').textContent = stone.name;
+  document.getElementById('detailHash').textContent = stone.features ? 'ID: ' + hashF(stone.features) : '';
+
+  const contacts = stone.contacts ? JSON.parse(stone.contacts) : {};
+  const block = document.getElementById('detailContacts');
+  block.innerHTML = '';
+
+  const defs = [
+    { key: 'phone', ico: '📞', label: 'Телефон', getUrl: v => 'tel:' + v },
+    { key: 'tg',    ico: '✈️', label: 'Telegram', getUrl: v => 'https://t.me/' + v.replace('@','') },
+    { key: 'email', ico: '✉️', label: 'Email',    getUrl: v => 'mailto:' + v },
+    { key: 'site',  ico: '🔗', label: 'Сайт',     getUrl: v => v.startsWith('http') ? v : 'https://' + v },
+  ];
+
+  let qrData = stone.name + '\n';
+  let hasContacts = false;
+
+  defs.forEach(({ key, ico, label, getUrl }) => {
+    const val = contacts[key];
+    if (!val) return;
+    hasContacts = true;
+    qrData += label + ': ' + val + '\n';
+    const url = getUrl(val);
+    const div = document.createElement('div');
+    div.className = 'contact-item';
+    div.innerHTML = `<div class="contact-ico">${ico}</div><div class="contact-info"><div class="contact-label">${label}</div><div class="contact-value">${esc(val)}</div></div><div class="contact-arrow">›</div>`;
+    div.onclick = () => openLink(url);
+    block.appendChild(div);
+  });
+
+  const qrBlock = document.getElementById('qrBlock');
+  const qrDiv = document.getElementById('qrCanvas');
+  qrDiv.innerHTML = '';
+  if (hasContacts) {
+    qrBlock.style.display = 'flex';
+    new QRCode(qrDiv, { text: qrData.trim(), width: 180, height: 180, colorDark: '#1a1a1a', colorLight: '#f5f2eb', correctLevel: QRCode.CorrectLevel.M });
+  } else { qrBlock.style.display = 'none'; }
+
+  showScreen('resultDetail');
+}
+
+function cosine(a, b) {
+  let dot=0, na=0, nb=0;
+  const len = Math.min(a.length, b.length);
+  for (let i=0; i<len; i++) { dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
+}
+function hashF(f) {
+  if (!f || !f.length) return '—';
+  return CryptoJS.SHA256(f.slice(0,20).map(v => v.toFixed(4)).join(',')).toString().slice(0,16).toUpperCase();
+}
+async function compressCanvas(c) {
+  const max=480, scale=Math.min(max/c.width, max/c.height, 1);
+  const c2=document.createElement('canvas');
+  c2.width=Math.round(c.width*scale); c2.height=Math.round(c.height*scale);
+  c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height);
+  return c2.toDataURL('image/jpeg', 0.68);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function makeTiny(src, maxSize) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxSize/img.width, maxSize/img.height, 1);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.5));
+    };
+    img.src = src;
+  });
+}
+function showVeil(msg) {
+  let el = document.getElementById('veil');
+  if (!el) { el=document.createElement('div'); el.id='veil'; el.className='veil'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="veil-ring"></div><div class="veil-lbl">${msg}</div>`;
+}
+function hideVeil() { const el=document.getElementById('veil'); if(el) el.remove(); }
+</script>
+</body>
+</html>
