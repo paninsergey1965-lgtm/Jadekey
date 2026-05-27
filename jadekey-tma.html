@@ -423,25 +423,33 @@ function updateAddCounter() {
 async function saveNewStone() {
   const name = document.getElementById('addName').value.trim();
   if (!name) { alert('Введите название'); return; }
-  if (addShots.length < MIN_SHOTS) return;
+  if (addShots.length < MIN_SHOTS) { alert('Нужно минимум ' + MIN_SHOTS + ' снимка'); return; }
   showVeil('Сохранение…');
   try {
-    // Only store features + tiny cover image to stay under Firestore 1MB limit
     const tinyCover = await makeTiny(addShots[0].dataUrl, 200);
-    await fsAdd({
-      name,
+    const stoneData = {
+      name: name,
       link: document.getElementById('addLink').value.trim(),
       createdAt: Date.now(),
       shotsCount: addShots.length,
       coverImage: tinyCover,
       features: addShots[0].features,
       shotsFeatures: addShots.map(s => s.features)
-    });
+    };
+    const result = await fsAdd(stoneData);
+    if (result.error) {
+      hideVeil();
+      alert('Firebase ошибка: ' + JSON.stringify(result.error));
+      return;
+    }
     await loadData();
     hideVeil();
     renderStonesList();
     showScreen('myStones');
-  } catch(e) { hideVeil(); alert('Ошибка: ' + e.message); }
+  } catch(e) {
+    hideVeil();
+    alert('Ошибка сохранения: ' + e.message);
+  }
 }
 
 // STONES LIST
