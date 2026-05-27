@@ -177,9 +177,7 @@ input[type=file] { display: none; }
       <div class="add-counter-badge" id="addCounter">0/7 фото</div>
     </div>
   </div>
-  <div class="add-shots-strip" id="shotsStrip">
-    <!-- thumbnails appear here -->
-  </div>
+  <div class="add-shots-strip" id="shotsStrip"></div>
   <div class="add-form">
     <div class="add-form-title">Добавить камень</div>
     <div class="add-form-sub" id="addFormSub">Сделайте минимум 3 снимка с разных углов</div>
@@ -236,6 +234,7 @@ const PROJECT = 'jadekey-46f37';
 const API_KEY = 'AIzaSyCmc4qJFC0rkFvcz7ZBG42ApnZfCcrrT20';
 const BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents';
 const ADMIN_PASS = 'jadekey2024';
+const EMBED_URL = 'https://jadekey.onrender.com/embed';
 const THRESHOLD = 0.76;
 const MIN_SHOTS = 3;
 const MAX_SHOTS = 7;
@@ -247,20 +246,6 @@ let addShots = [];
 
 if (sessionStorage.getItem('jk_admin')) isAdmin = true;
 loadData();
-
-// Request camera permission immediately on load
-async function initCamera() {
-  try {
-    if (sharedStream) return;
-    sharedStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } }
-    });
-    const track = sharedStream.getVideoTracks()[0];
-    if (track && track.applyConstraints) {
-      try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {}
-    }
-  } catch(e) { console.log('Camera init:', e.message); }
-}
 
 // FIRESTORE REST
 function fsVal(v) {
@@ -313,16 +298,8 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
-function goHome() {
-  showScreen('home');
-}
-
-function goScan() {
-  showScreen('scan');
-  startCam('scanVideo');
-}
-
+function goHome() { showScreen('home'); }
+function goScan() { showScreen('scan'); startCam('scanVideo'); }
 function goAdd() {
   if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
   addShots = [];
@@ -334,7 +311,6 @@ function goAdd() {
   showScreen('addStone');
   startCam('addVideo');
 }
-
 function goMyStones() {
   if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
   renderStonesList();
@@ -344,10 +320,7 @@ function goMyStones() {
 async function startCam(videoId) {
   const v = document.getElementById(videoId);
   try {
-    if (sharedStream) {
-      sharedStream.getTracks().forEach(t => t.stop());
-      sharedStream = null;
-    }
+    if (sharedStream) { sharedStream.getTracks().forEach(t => t.stop()); sharedStream = null; }
     sharedStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } }
     });
@@ -360,7 +333,6 @@ async function startCam(videoId) {
     if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Наведите на камень и нажмите кнопку';
   } catch(e) {
     if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Камера недоступна — разрешите доступ';
-    console.log('Camera error:', e.message);
   }
 }
 
@@ -380,6 +352,20 @@ function updateAdminUI() {
   document.getElementById('logoutBtn').style.display = isAdmin ? 'block' : 'none';
 }
 
+// === EMBED via server ===
+async function getEmbedding(dataUrl) {
+  // strip data:image/...;base64, prefix if present — server expects pure base64 or full dataUrl
+  const resp = await fetch(EMBED_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: dataUrl })
+  });
+  if (!resp.ok) throw new Error('Embed server error: ' + resp.status);
+  const j = await resp.json();
+  if (j.error) throw new Error(j.error);
+  return j.embedding; // float array
+}
+
 // SHOOT (ADD MODE)
 async function shootPhoto() {
   if (addShots.length >= MAX_SHOTS) return;
@@ -389,10 +375,17 @@ async function shootPhoto() {
   c.width = v.videoWidth || 640; c.height = v.videoHeight || 640;
   c.getContext('2d').drawImage(v, 0, 0);
   const dataUrl = await compressCanvas(c);
-  const features = await getFeaturesFromUrl(dataUrl);
-  addShots.push({ dataUrl, features });
-  renderStrip();
-  updateAddCounter();
+  showVeil('Анализ снимка…');
+  try {
+    const embedding = await getEmbedding(dataUrl);
+    addShots.push({ dataUrl, features: embedding });
+    renderStrip();
+    updateAddCounter();
+  } catch(e) {
+    alert('Ошибка сервера: ' + e.message);
+  } finally {
+    hideVeil();
+  }
 }
 
 function renderStrip() {
@@ -417,7 +410,6 @@ function updateAddCounter() {
   document.getElementById('addFormSub').textContent = n >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов';
 }
 
-// SAVE — FIX: shotsFeatures stored as array of objects {idx, f:[...]} to avoid nested arrays
 async function saveNewStone() {
   const name = document.getElementById('addName').value.trim();
   if (!name) { alert('Введите название'); return; }
@@ -432,15 +424,10 @@ async function saveNewStone() {
       shotsCount: addShots.length,
       coverImage: tinyCover,
       features: addShots[0].features,
-      // FIX: wrap each features array in an object to avoid nested arrays (Firestore limitation)
       shotsFeatures: addShots.map((s, i) => ({ idx: i, f: s.features }))
     };
     const result = await fsAdd(stoneData);
-    if (result.error) {
-      hideVeil();
-      alert('Firebase ошибка: ' + JSON.stringify(result.error));
-      return;
-    }
+    if (result.error) { hideVeil(); alert('Firebase ошибка: ' + JSON.stringify(result.error)); return; }
     await loadData();
     hideVeil();
     renderStonesList();
@@ -478,7 +465,7 @@ async function delStone(id, e) {
   renderStonesList();
 }
 
-// SCAN — FIX: read shotsFeatures as array of objects {idx, f:[...]}
+// SCAN
 async function doScan() {
   if (dataset.length === 0) {
     document.getElementById('scanHint').textContent = 'База пуста — добавьте камни';
@@ -491,25 +478,38 @@ async function doScan() {
   }
   document.getElementById('scanBtn').disabled = true;
   document.getElementById('scanBtn').textContent = 'Анализ…';
-  document.getElementById('scanHint').textContent = 'Идёт сравнение…';
+  document.getElementById('scanHint').textContent = 'Отправка на сервер…';
+
   const c = document.createElement('canvas');
   c.width = v.videoWidth; c.height = v.videoHeight;
   c.getContext('2d').drawImage(v, 0, 0);
-  const src = c.toDataURL('image/jpeg', 0.9);
-  const qf = await getFeaturesFromUrl(src);
+  const src = await compressCanvas(c);
+
+  let qf;
+  try {
+    qf = await getEmbedding(src);
+  } catch(e) {
+    document.getElementById('scanBtn').disabled = false;
+    document.getElementById('scanBtn').textContent = 'Идентифицировать';
+    document.getElementById('scanHint').textContent = 'Ошибка сервера: ' + e.message;
+    return;
+  }
+
+  document.getElementById('scanHint').textContent = 'Сравнение…';
   let best = null, bestScore = -1;
   for (const stone of dataset) {
     const allF = [];
     if (stone.features && stone.features.length) allF.push(stone.features);
-    // FIX: shotsFeatures is now array of {idx, f:[...]} objects
     if (stone.shotsFeatures) stone.shotsFeatures.forEach(sf => { if (sf && sf.f && sf.f.length) allF.push(sf.f); });
     for (const f of allF) {
       const sc = cosine(qf, f);
       if (sc > bestScore) { bestScore = sc; best = stone; }
     }
   }
+
   document.getElementById('scanBtn').disabled = false;
   document.getElementById('scanBtn').textContent = 'Идентифицировать';
+
   if (best && bestScore >= THRESHOLD) {
     document.getElementById('scanHint').textContent = '✓ ' + best.name;
     showScanBadge(best, bestScore);
@@ -567,64 +567,43 @@ function getLabel(val) {
   return 'Открыть сайт';
 }
 
-// FEATURES
-function getFeaturesFromUrl(src) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      const s=128, c=document.createElement('canvas'); c.width=s; c.height=s;
-      c.getContext('2d').drawImage(img,0,0,s,s);
-      resolve(extractF(c.getContext('2d').getImageData(0,0,s,s).data,s,s));
-    };
-    img.src = src;
-  });
+function cosine(a, b) {
+  let dot=0, na=0, nb=0;
+  const len = Math.min(a.length, b.length);
+  for (let i=0; i<len; i++) { dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
 }
-function extractF(data,W,H){
-  const f=[],bins=32,hR=new Array(bins).fill(0),hG=new Array(bins).fill(0),hB=new Array(bins).fill(0),total=W*H;
-  for(let i=0;i<data.length;i+=4){hR[Math.floor(data[i]/(256/bins))]++;hG[Math.floor(data[i+1]/(256/bins))]++;hB[Math.floor(data[i+2]/(256/bins))]++;}
-  hR.forEach(v=>f.push(v/total));hG.forEach(v=>f.push(v/total));hB.forEach(v=>f.push(v/total));
-  const gN=4,cW=Math.floor(W/gN),cH=Math.floor(H/gN);
-  for(let gy=0;gy<gN;gy++)for(let gx=0;gx<gN;gx++){
-    let sR=0,sG=0,sB=0,cnt=0,ssR=0,ssG=0,ssB=0;
-    for(let y=gy*cH;y<(gy+1)*cH&&y<H;y++)for(let x=gx*cW;x<(gx+1)*cW&&x<W;x++){const idx=(y*W+x)*4;sR+=data[idx];sG+=data[idx+1];sB+=data[idx+2];cnt++;}
-    const mR=sR/cnt/255,mG=sG/cnt/255,mB=sB/cnt/255;
-    for(let y=gy*cH;y<(gy+1)*cH&&y<H;y++)for(let x=gx*cW;x<(gx+1)*cW&&x<W;x++){const idx=(y*W+x)*4;ssR+=Math.pow(data[idx]/255-mR,2);ssG+=Math.pow(data[idx+1]/255-mG,2);ssB+=Math.pow(data[idx+2]/255-mB,2);}
-    f.push(mR,mG,mB,Math.sqrt(ssR/cnt),Math.sqrt(ssG/cnt),Math.sqrt(ssB/cnt));
-  }
-  const zones=[[0,0,0.5,0.5],[0.5,0,1,0.5],[0,0.5,0.5,1],[0.5,0.5,1,1]];
-  for(const[x0,y0,x1,y1]of zones){
-    let e=0,cnt=0;
-    for(let y=Math.floor(y0*H)+1;y<Math.floor(y1*H)-1;y++)for(let x=Math.floor(x0*W)+1;x<Math.floor(x1*W)-1;x++){
-      const g=(px,py)=>{const idx=(py*W+px)*4;return(data[idx]*0.299+data[idx+1]*0.587+data[idx+2]*0.114)/255;};
-      const gx2=g(x+1,y)-g(x-1,y),gy2=g(x,y+1)-g(x,y-1);e+=Math.sqrt(gx2*gx2+gy2*gy2);cnt++;
-    }
-    f.push(e/cnt);
-  }
-  const hh=new Array(16).fill(0);
-  for(let i=0;i<data.length;i+=4){const r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;if(d<0.05)continue;let h=0;if(mx===r)h=(g-b)/d%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h=((h*60)+360)%360;hh[Math.floor(h/22.5)]++;}
-  const ht=hh.reduce((a,b)=>a+b,1);hh.forEach(v=>f.push(v/ht));
-  return f;
+function hashF(f) {
+  if (!f || !f.length) return '—';
+  return CryptoJS.SHA256(f.slice(0,20).map(v => v.toFixed(4)).join(',')).toString().slice(0,16).toUpperCase();
 }
-function cosine(a,b){let dot=0,na=0,nb=0;const len=Math.min(a.length,b.length);for(let i=0;i<len;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-9);}
-function hashF(f){if(!f||!f.length)return'—';return CryptoJS.SHA256(f.slice(0,20).map(v=>v.toFixed(3)).join(',')).toString().slice(0,16).toUpperCase();}
-async function compressCanvas(c){const max=480,scale=Math.min(max/c.width,max/c.height,1);const c2=document.createElement('canvas');c2.width=Math.round(c.width*scale);c2.height=Math.round(c.height*scale);c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);return c2.toDataURL('image/jpeg',0.68);}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function compressCanvas(c) {
+  const max=480, scale=Math.min(max/c.width, max/c.height, 1);
+  const c2=document.createElement('canvas');
+  c2.width=Math.round(c.width*scale); c2.height=Math.round(c.height*scale);
+  c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height);
+  return c2.toDataURL('image/jpeg', 0.68);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 async function makeTiny(src, maxSize) {
   return new Promise(res => {
     const img = new Image();
     img.onload = () => {
       const scale = Math.min(maxSize/img.width, maxSize/img.height, 1);
       const c = document.createElement('canvas');
-      c.width = Math.round(img.width*scale);
-      c.height = Math.round(img.height*scale);
+      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       res(c.toDataURL('image/jpeg', 0.5));
     };
     img.src = src;
   });
 }
-function showVeil(msg){let el=document.getElementById('veil');if(!el){el=document.createElement('div');el.id='veil';el.className='veil';el.innerHTML=`<div class="veil-ring"></div><div class="veil-lbl">${msg}</div>`;document.body.appendChild(el);}}
-function hideVeil(){const el=document.getElementById('veil');if(el)el.remove();}
+function showVeil(msg) {
+  let el = document.getElementById('veil');
+  if (!el) { el=document.createElement('div'); el.id='veil'; el.className='veil'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="veil-ring"></div><div class="veil-lbl">${msg}</div>`;
+}
+function hideVeil() { const el=document.getElementById('veil'); if(el) el.remove(); }
 </script>
 </body>
 </html>
