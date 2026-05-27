@@ -6,510 +6,580 @@
 <title>JadeKey</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Tenor+Sans&display=swap');
-:root{--black:#0a0a0a;--black2:#111110;--black3:#1a1a18;--surface:#161614;--border:rgba(255,255,255,0.07);--border-b:rgba(255,255,255,0.14);--gold:#b8975a;--gold-l:#d4b078;--gold-d:rgba(184,151,90,0.3);--white:#f0ede6;--white-d:rgba(240,237,230,0.45);--white-f:rgba(240,237,230,0.18);--green:#5d9988;--gap:20px;}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;background:var(--black);color:var(--white);font-family:'Tenor Sans',sans-serif;overflow-x:hidden;}
-.header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px var(--gap);background:rgba(10,10,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
-.logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;letter-spacing:0.22em;}
-.logo em{font-style:italic;color:var(--gold);}
-.header-meta{display:flex;align-items:center;gap:12px;}
-.dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 3s infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.meta{font-size:10px;letter-spacing:0.15em;color:var(--white-d);text-transform:uppercase;}
-.owner-pill{font-size:9px;letter-spacing:0.2em;color:var(--gold);border:1px solid var(--gold-d);padding:3px 8px;border-radius:20px;}
-.tabs{display:flex;background:var(--black2);border-bottom:1px solid var(--border);}
-.tab{flex:1;padding:14px 8px;text-align:center;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--white-d);cursor:pointer;transition:color 0.3s;position:relative;}
-.tab.active{color:var(--white);}
-.tab.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
-.tab.hidden{display:none;}
-.screen{display:none;}.screen.active{display:block;animation:rev 0.35s ease;}
-@keyframes rev{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-family: -apple-system, 'SF Pro Text', sans-serif; overflow: hidden; }
 
-/* VIEWFINDER */
-.vf-wrap{position:relative;width:100%;aspect-ratio:1;border-radius:4px;overflow:hidden;background:var(--black3);margin-bottom:12px;}
-#videoEl,#canvasEl{width:100%;height:100%;object-fit:cover;display:block;}
-#canvasEl{display:none;position:absolute;inset:0;}
-.vf-vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,0.6) 100%);pointer-events:none;}
-.vf-ui{position:absolute;inset:0;}
-.corner{position:absolute;width:22px;height:22px;border-color:var(--gold);border-style:solid;opacity:0.55;pointer-events:none;}
-.corner.tl{top:14px;left:14px;border-width:1px 0 0 1px;}
-.corner.tr{top:14px;right:14px;border-width:1px 1px 0 0;}
-.corner.bl{bottom:14px;left:14px;border-width:0 0 1px 1px;}
-.corner.br{bottom:14px;right:14px;border-width:0 1px 1px 0;}
-.reticle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border:1px solid rgba(184,151,90,0.2);border-radius:50%;pointer-events:none;transition:border-color 0.2s;}
-.reticle.focusing{border-color:rgba(184,151,90,0.8);animation:focusPulse 0.4s ease;}
-@keyframes focusPulse{0%{transform:translate(-50%,-50%) scale(1.3)}100%{transform:translate(-50%,-50%) scale(1)}}
-.scanline{position:absolute;left:14px;right:14px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-l),transparent);animation:scan 3s ease-in-out infinite;opacity:0;transition:opacity 0.4s;pointer-events:none;}
-.scanning .scanline{opacity:0.7;}
-@keyframes scan{0%,100%{top:10%}50%{top:88%}}
-.vf-hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(184,151,90,0.5);pointer-events:none;}
-/* Tap to focus indicator */
-.focus-ring{position:absolute;width:50px;height:50px;border:1px solid var(--gold-l);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);opacity:0;transition:opacity 0.3s;}
-.focus-ring.show{opacity:1;animation:focusRing 0.6s ease forwards;}
-@keyframes focusRing{0%{transform:translate(-50%,-50%) scale(1.4);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+/* SCREENS */
+.screen { display: none; position: absolute; inset: 0; }
+.screen.active { display: flex; flex-direction: column; }
 
-/* ZOOM */
-.zoom-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.zoom-lbl{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--white-d);white-space:nowrap;}
-.zoom-track{flex:1;height:2px;background:var(--border-b);border-radius:1px;position:relative;cursor:pointer;}
-.zoom-fill{height:100%;background:var(--gold);border-radius:1px;transition:width 0.1s;}
-.zoom-thumb{position:absolute;top:50%;width:14px;height:14px;background:var(--gold-l);border-radius:50%;transform:translate(-50%,-50%);cursor:grab;}
-input[type=range].zoom-input{width:100%;height:2px;-webkit-appearance:none;background:transparent;outline:none;}
-input[type=range].zoom-input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold-l);cursor:pointer;}
-input[type=range].zoom-input::-webkit-slider-runnable-track{background:var(--border-b);height:2px;border-radius:1px;}
-.zoom-val{font-family:'Playfair Display',serif;font-size:13px;color:var(--gold-l);min-width:28px;text-align:right;}
+/* HOME */
+#home { align-items: center; justify-content: flex-end; padding-bottom: 48px; }
+.home-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.home-logo-wrap { text-align: center; }
+.home-glyph { font-size: 64px; opacity: 0.08; line-height: 1; margin-bottom: 24px; }
+.home-title { font-size: 42px; font-weight: 300; letter-spacing: -0.5px; color: #f0ede6; margin-bottom: 8px; }
+.home-sub { font-size: 15px; color: rgba(240,237,230,0.4); letter-spacing: 0.02em; }
+.home-btns { position: relative; z-index: 2; width: 100%; padding: 0 24px; display: flex; flex-direction: column; gap: 12px; }
+.btn-primary { width: 100%; padding: 18px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+.btn-primary:active { opacity: 0.8; }
+.btn-row { display: flex; gap: 12px; }
+.btn-secondary { flex: 1; padding: 16px; background: rgba(255,255,255,0.08); border: none; border-radius: 14px; color: #c4a96a; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+.btn-secondary:active { opacity: 0.7; }
 
-/* STATUS + CONTROLS */
-.scan-status{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--green);text-align:center;min-height:20px;margin-bottom:14px;}
-.ctrls{display:flex;gap:10px;margin-bottom:12px;}
-.ctrl{flex:1;padding:13px;background:transparent;border:1px solid var(--border-b);border-radius:2px;color:var(--white-d);font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
-.ctrl:active{background:var(--white-f);color:var(--white);}
-.scan-btn{width:100%;padding:17px;background:linear-gradient(135deg,var(--gold) 0%,#8b6d35 100%);border:none;border-radius:2px;color:var(--black);font-family:'Playfair Display',serif;font-size:15px;letter-spacing:0.22em;cursor:pointer;transition:opacity 0.2s;}
-.scan-btn:disabled{background:var(--surface);color:var(--white-f);border:1px solid var(--border);}
-.scan-btn:not(:disabled):active{opacity:0.85;}
+/* SCAN */
+#scan { background: #000; }
+.scan-video-wrap { flex: 1; position: relative; overflow: hidden; }
+#scanVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+#scanCanvas { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scan-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 24px 0 20px; pointer-events: none; }
+.scan-top { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 20px; pointer-events: all; }
+.scan-back { width: 36px; height: 36px; background: rgba(0,0,0,0.5); border-radius: 50%; border: none; color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.scan-title-lbl { font-size: 14px; color: rgba(255,255,255,0.7); letter-spacing: 0.05em; text-transform: uppercase; }
+.scan-frame { width: 72%; aspect-ratio: 1; position: relative; }
+.scan-frame::before, .scan-frame::after { content: ''; position: absolute; width: 28px; height: 28px; border-color: rgba(196,169,106,0.8); border-style: solid; }
+.scan-frame::before { top: 0; left: 0; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+.scan-frame::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+.scan-frame-inner::before, .scan-frame-inner::after { content: ''; position: absolute; width: 28px; height: 28px; border-color: rgba(196,169,106,0.8); border-style: solid; }
+.scan-frame-inner::before { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+.scan-frame-inner::after { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+.scan-hint { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; padding: 0 40px; }
+.scan-bottom { width: 100%; padding: 0 24px 8px; pointer-events: all; }
+.scan-result-badge { background: rgba(0,0,0,0.75); border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: none; }
+.scan-result-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.scan-result-pct { font-size: 13px; color: #c4a96a; }
+.scan-btn { width: 100%; padding: 18px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.scan-btn:disabled { background: rgba(196,169,106,0.3); color: rgba(240,237,230,0.3); }
+.scan-btn:not(:disabled):active { opacity: 0.85; }
 
-/* RESULT */
-.result-card{background:var(--surface);border:1px solid var(--border-b);border-radius:4px;overflow:hidden;margin-top:20px;animation:rev 0.4s ease;}
-.result-card.match{border-color:rgba(184,151,90,0.3);}
-.result-card.no-match{border-color:rgba(139,58,58,0.3);}
-.res-img{width:100%;height:140px;object-fit:cover;display:block;filter:brightness(0.85);}
-.res-body{padding:18px;}
-.res-pct-row{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;}
-.res-pct{font-family:'Playfair Display',serif;font-size:34px;color:var(--gold-l);line-height:1;}
-.res-lbl{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--white-d);}
-.res-bar{height:1px;background:var(--border);margin-bottom:14px;overflow:hidden;}
-.res-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-l));transition:width 0.8s cubic-bezier(0.16,1,0.3,1);}
-.res-name{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:5px;}
-.res-desc{font-size:13px;color:var(--white-d);line-height:1.6;font-style:italic;margin-bottom:16px;}
-.res-hash{font-size:9px;letter-spacing:0.1em;color:rgba(184,151,90,0.3);margin-bottom:16px;word-break:break-all;}
-.clink{display:flex;align-items:center;gap:12px;padding:14px;background:rgba(184,151,90,0.06);border:1px solid rgba(184,151,90,0.2);border-radius:2px;color:var(--white);text-decoration:none;transition:all 0.2s;}
-.clink:active{background:rgba(184,151,90,0.12);}
-.clink-ico{width:34px;height:34px;border:1px solid rgba(184,151,90,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
-.clink-main{font-size:13px;letter-spacing:0.08em;margin-bottom:2px;}
-.clink-sub{font-size:10px;color:var(--white-d);}
-.nav-hint{font-size:10px;letter-spacing:0.12em;color:var(--white-f);margin-top:8px;text-align:center;}
-.no-match-inner{padding:28px 18px;text-align:center;}
-.no-match-g{font-family:'Playfair Display',serif;font-size:36px;color:var(--white-f);margin-bottom:10px;}
-.no-match-t{font-family:'Playfair Display',serif;font-size:17px;color:var(--white-d);margin-bottom:5px;}
-.no-match-s{font-size:11px;color:var(--white-f);letter-spacing:0.1em;}
+/* ADD STONE */
+#addStone { background: #0d0d0d; }
+.add-video-wrap { flex: 0 0 45vh; position: relative; overflow: hidden; background: #000; }
+#addVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.add-counter { position: absolute; top: 16px; left: 0; right: 0; text-align: center; }
+.add-counter-badge { display: inline-block; background: rgba(0,0,0,0.65); border-radius: 20px; padding: 6px 16px; font-size: 14px; color: rgba(255,255,255,0.9); letter-spacing: 0.05em; }
+.add-shots-strip { display: flex; gap: 6px; padding: 12px 16px; overflow-x: auto; background: #111; flex-shrink: 0; }
+.add-shots-strip::-webkit-scrollbar { display: none; }
+.shot-thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(196,169,106,0.5); }
+.shot-empty { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; border: 1.5px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 20px; color: rgba(255,255,255,0.15); }
+.add-form { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.add-form-title { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.add-form-sub { font-size: 13px; color: rgba(240,237,230,0.4); margin-bottom: 18px; }
+.field { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #f0ede6; font-size: 16px; outline: none; margin-bottom: 12px; font-family: inherit; transition: border-color 0.2s; }
+.field:focus { border-color: rgba(196,169,106,0.6); }
+.field::placeholder { color: rgba(240,237,230,0.3); }
+.add-shoot-btn { width: 100%; padding: 16px; background: rgba(196,169,106,0.15); border: 1.5px solid rgba(196,169,106,0.4); border-radius: 14px; color: #c4a96a; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px; font-family: inherit; transition: all 0.15s; }
+.add-shoot-btn:active { background: rgba(196,169,106,0.25); }
+.add-save-btn { width: 100%; padding: 17px; background: #c4a96a; border: none; border-radius: 14px; color: #0d0d0d; font-size: 17px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-family: inherit; transition: opacity 0.15s; }
+.add-save-btn:disabled { opacity: 0.3; cursor: default; }
+.add-save-btn:not(:disabled):active { opacity: 0.85; }
+.add-cancel-btn { width: 100%; padding: 14px; background: transparent; border: none; color: rgba(240,237,230,0.4); font-size: 15px; cursor: pointer; font-family: inherit; }
 
-/* DATASET */
-.ds-hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);}
-.ds-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;}
-.ds-cnt{font-size:10px;letter-spacing:0.15em;color:var(--white-d);margin-top:4px;}
-.add-btn{padding:10px 16px;background:transparent;border:1px solid rgba(184,151,90,0.4);border-radius:2px;color:var(--gold-l);font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;}
-.add-btn:active{background:rgba(184,151,90,0.08);}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-.tile{background:var(--surface);border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:pointer;}
-.tile:active{border-color:var(--border-b);}
-.tile-img{width:100%;aspect-ratio:1;object-fit:cover;display:block;filter:brightness(0.9);}
-.tile-ph{width:100%;aspect-ratio:1;background:var(--black3);display:flex;align-items:center;justify-content:center;font-size:28px;opacity:0.2;color:var(--gold);}
-.tile-info{padding:9px 11px;}
-.tile-name{font-size:13px;font-family:'Playfair Display',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
-.tile-shots{font-size:9px;letter-spacing:0.1em;color:var(--gold-d);}
-.tile-link{font-size:9px;letter-spacing:0.1em;color:var(--white-f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.empty{text-align:center;padding:60px 20px;display:none;}
-.empty-g{font-family:'Playfair Display',serif;font-size:44px;color:var(--white-f);margin-bottom:14px;}
-.empty-t{font-size:13px;color:var(--white-f);font-style:italic;}
+/* MY STONES */
+#myStones { background: #0d0d0d; }
+.list-header { padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.list-title { font-size: 28px; font-weight: 700; }
+.list-back { background: none; border: none; color: #c4a96a; font-size: 15px; cursor: pointer; font-family: inherit; }
+.stones-list { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+.stone-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.07); cursor: pointer; }
+.stone-row:active { opacity: 0.7; }
+.stone-thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: rgba(255,255,255,0.06); }
+.stone-thumb-ph { width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 22px; color: rgba(255,255,255,0.2); }
+.stone-info { flex: 1; min-width: 0; }
+.stone-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stone-meta { font-size: 12px; color: rgba(240,237,230,0.4); margin-top: 2px; }
+.stone-del { padding: 6px 10px; background: none; border: none; color: rgba(196,169,106,0.6); font-size: 13px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.empty-list { text-align: center; padding: 60px 20px; color: rgba(240,237,230,0.3); }
+.empty-list .eg { font-size: 48px; margin-bottom: 14px; }
+.empty-list p { font-size: 15px; }
 
-/* LOGIN */
-.login-wrap{max-width:320px;margin:48px auto;}
-.login-eye{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
-.login-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:6px;}
-.login-sub{font-size:12px;color:var(--white-d);margin-bottom:32px;line-height:1.5;}
-.lbl{display:block;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--white-d);margin-bottom:8px;}
-.inp{width:100%;padding:13px 15px;background:var(--surface);border:1px solid var(--border-b);border-radius:2px;color:var(--white);font-family:'Tenor Sans',sans-serif;font-size:15px;outline:none;transition:border-color 0.25s;margin-bottom:18px;}
-.inp:focus{border-color:rgba(184,151,90,0.5);}
-.inp::placeholder{color:var(--white-f);}
-.login-err{font-size:11px;color:#c47070;margin-top:-10px;margin-bottom:14px;display:none;}
-.panel-card{background:var(--surface);border:1px solid rgba(184,151,90,0.2);border-radius:4px;padding:22px;text-align:center;margin-bottom:14px;}
-.panel-g{font-size:34px;color:var(--gold);margin-bottom:10px;}
-.panel-t{font-family:'Playfair Display',serif;font-size:19px;font-weight:400;margin-bottom:5px;}
-.panel-s{font-size:11px;color:var(--white-d);}
+/* ADMIN */
+#adminLogin { background: #0d0d0d; align-items: center; justify-content: center; padding: 40px 32px; }
+.admin-title { font-size: 28px; font-weight: 600; margin-bottom: 8px; text-align: center; }
+.admin-sub { font-size: 14px; color: rgba(240,237,230,0.4); text-align: center; margin-bottom: 36px; }
+.admin-err { font-size: 13px; color: #e05c5c; margin-top: -8px; margin-bottom: 14px; display: none; text-align: center; }
+.admin-out-btn { margin-top: 12px; width: 100%; padding: 14px; background: transparent; border: 1px solid rgba(224,92,92,0.3); border-radius: 12px; color: #e05c5c; font-size: 15px; cursor: pointer; font-family: inherit; }
 
-/* SHEET */
-.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;animation:ov 0.2s ease;}
-@keyframes ov{from{opacity:0}to{opacity:1}}
-.sheet{background:var(--black2);border:1px solid var(--border-b);border-bottom:none;border-radius:12px 12px 0 0;padding:22px var(--gap) 38px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:su 0.3s cubic-bezier(0.16,1,0.3,1);}
-@keyframes su{from{transform:translateY(60px)}to{transform:none}}
-.handle{width:36px;height:3px;background:var(--border-b);border-radius:2px;margin:0 auto 22px;}
-.sheet-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;margin-bottom:6px;color:var(--gold-l);}
-.sheet-sub{font-size:11px;color:var(--white-d);margin-bottom:20px;letter-spacing:0.05em;}
-
-/* 7 SHOTS GRID */
-.shots-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;}
-.shot-slot{aspect-ratio:1;border-radius:3px;border:1px dashed rgba(184,151,90,0.2);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;transition:border-color 0.2s;}
-.shot-slot.filled{border-color:rgba(184,151,90,0.4);border-style:solid;}
-.shot-slot:active{border-color:rgba(184,151,90,0.6);}
-.shot-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.shot-num{font-size:16px;color:rgba(184,151,90,0.25);font-family:'Playfair Display',serif;}
-.shot-lbl{font-size:8px;letter-spacing:0.12em;color:var(--white-f);margin-top:3px;}
-.shot-del{position:absolute;top:3px;right:3px;width:18px;height:18px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--white-d);cursor:pointer;z-index:2;}
-.shots-progress{margin-bottom:16px;}
-.shots-prog-bar{height:2px;background:var(--border);border-radius:1px;overflow:hidden;margin-bottom:6px;}
-.shots-prog-fill{height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-l));transition:width 0.4s ease;}
-.shots-prog-txt{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--white-d);}
-.shots-angles{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;}
-.angle-lbl{font-size:8px;letter-spacing:0.08em;color:var(--white-f);text-align:center;padding:2px;}
-
-.lt-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
-.lt-btn{padding:7px 13px;border-radius:20px;border:1px solid var(--border-b);background:transparent;color:var(--white-d);font-size:12px;cursor:pointer;font-family:'Tenor Sans',sans-serif;transition:all 0.2s;}
-.lt-btn.active{background:rgba(184,151,90,0.15);border-color:rgba(184,151,90,0.5);color:var(--gold-l);}
-.prim-btn{width:100%;padding:15px;background:linear-gradient(135deg,var(--gold) 0%,#8b6d35 100%);border:none;border-radius:2px;color:var(--black);font-family:'Playfair Display',serif;font-size:15px;letter-spacing:0.15em;cursor:pointer;margin-top:8px;}
-.prim-btn:disabled{opacity:0.4;cursor:default;}
-.prim-btn:not(:disabled):active{opacity:0.85;}
-.ghost-btn{width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--white-d);font-family:'Tenor Sans',sans-serif;font-size:12px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:10px;}
-.ghost-btn:active{background:var(--white-f);}
-.danger-btn{width:100%;padding:11px;background:transparent;border:1px solid rgba(139,58,58,0.35);border-radius:2px;color:#c47070;font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:10px;}
+/* RESULT DETAIL */
+#resultDetail { background: #0d0d0d; overflow-y: auto; }
+.detail-img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.detail-body { padding: 24px 20px 40px; }
+.detail-pct { font-size: 48px; font-weight: 300; color: #c4a96a; line-height: 1; margin-bottom: 4px; }
+.detail-match-lbl { font-size: 12px; color: rgba(240,237,230,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+.detail-name { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.detail-desc { font-size: 15px; color: rgba(240,237,230,0.6); line-height: 1.6; margin-bottom: 24px; }
+.detail-id { font-size: 11px; color: rgba(196,169,106,0.35); letter-spacing: 0.08em; word-break: break-all; margin-bottom: 24px; font-family: 'SF Mono', monospace; }
+.detail-cta { display: flex; align-items: center; gap: 14px; padding: 18px; background: rgba(196,169,106,0.1); border: 1px solid rgba(196,169,106,0.25); border-radius: 16px; color: #f0ede6; text-decoration: none; margin-bottom: 16px; transition: all 0.2s; }
+.detail-cta:active { background: rgba(196,169,106,0.18); }
+.detail-cta-ico { width: 40px; height: 40px; border: 1px solid rgba(196,169,106,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.detail-cta-main { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+.detail-cta-sub { font-size: 12px; color: rgba(240,237,230,0.5); }
+.detail-back { width: 100%; padding: 16px; background: rgba(255,255,255,0.07); border: none; border-radius: 14px; color: rgba(240,237,230,0.7); font-size: 16px; cursor: pointer; font-family: inherit; margin-top: 8px; }
 
 /* SAVING */
-.saving-veil{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
-.ring{width:34px;height:34px;border:2px solid rgba(184,151,90,0.2);border-top-color:var(--gold-l);border-radius:50%;animation:spin 0.9s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
-.saving-lbl{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);}
-input[type=file]{display:none;}
+.veil { position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.veil-ring { width: 40px; height: 40px; border: 2px solid rgba(196,169,106,0.2); border-top-color: #c4a96a; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.veil-lbl { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #c4a96a; }
+
+input[type=file] { display: none; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="logo">Jade<em>Key</em></div>
-  <div class="header-meta">
-    <div class="dot"></div>
-    <span class="meta" id="metaText">загрузка</span>
-    <span class="owner-pill" id="ownerPill" style="display:none">OWNER</span>
+<!-- HOME -->
+<div class="screen active" id="home">
+  <div class="home-bg">
+    <div class="home-logo-wrap">
+      <div class="home-glyph">◈</div>
+      <div class="home-title">JadeKey</div>
+      <div class="home-sub">A numbered stone collection</div>
+    </div>
   </div>
-</div>
-
-<div class="tabs">
-  <div class="tab active" id="tabScan" onclick="switchTab('scan')">Идентификация</div>
-  <div class="tab hidden" id="tabCol" onclick="switchTab('dataset')">Коллекция</div>
-  <div class="tab" id="tabAdm" onclick="switchTab('admin')">Вход</div>
+  <div class="home-btns">
+    <button class="btn-primary" onclick="goScan()">Scan a stone</button>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goAdd()">Добавить камень</button>
+      <button class="btn-secondary" onclick="goMyStones()">Мои камни</button>
+    </div>
+  </div>
 </div>
 
 <!-- SCAN -->
-<div class="screen active" id="screen-scan">
-  <div style="padding:var(--gap)">
-    <div class="vf-wrap" id="vf" onclick="tapFocus(event)">
-      <video id="videoEl" autoplay playsinline muted></video>
-      <canvas id="canvasEl"></canvas>
-      <div class="vf-vig"></div>
-      <div class="vf-ui">
-        <div class="corner tl"></div><div class="corner tr"></div>
-        <div class="corner bl"></div><div class="corner br"></div>
-        <div class="reticle" id="reticle"></div>
-        <div class="scanline"></div>
-        <div class="focus-ring" id="focusRing"></div>
-        <div class="vf-hint" id="vfHint">Поднесите камень · нажмите для фокуса</div>
+<div class="screen" id="scan">
+  <div class="scan-video-wrap">
+    <video id="scanVideo" autoplay playsinline muted></video>
+    <canvas id="scanCanvas"></canvas>
+    <div class="scan-overlay">
+      <div class="scan-top">
+        <button class="scan-back" onclick="goHome()">✕</button>
+        <span class="scan-title-lbl">Сканирование</span>
+        <div style="width:36px"></div>
       </div>
+      <div class="scan-frame"><div class="scan-frame-inner"></div></div>
+      <div class="scan-hint" id="scanHint">Наведите на камень и нажмите кнопку</div>
     </div>
-
-    <!-- ZOOM -->
-    <div class="zoom-row">
-      <span class="zoom-lbl">Зум</span>
-      <input type="range" class="zoom-input" id="zoomSlider" min="1" max="4" step="0.1" value="1" oninput="applyZoom(this.value)">
-      <span class="zoom-val" id="zoomVal">1×</span>
+  </div>
+  <div class="scan-bottom" style="padding:16px 20px 32px;background:#0d0d0d;">
+    <div class="scan-result-badge" id="scanBadge">
+      <div class="scan-result-name" id="scanBadgeName"></div>
+      <div class="scan-result-pct" id="scanBadgePct"></div>
     </div>
-
-    <div class="scan-status" id="scanSt"></div>
-    <div class="ctrls">
-      <button class="ctrl" onclick="startCam()">▶ Камера</button>
-      <button class="ctrl" onclick="document.getElementById('fileIn').click()">↑ Фото</button>
-    </div>
-    <input type="file" id="fileIn" accept="image/*" onchange="loadFile(event)">
-    <button class="scan-btn" id="scanBtn" onclick="doScan()" disabled>Идентифицировать</button>
-    <div id="resultArea"></div>
+    <button class="scan-btn" id="scanBtn" onclick="doScan()">Идентифицировать</button>
   </div>
 </div>
 
-<!-- DATASET -->
-<div class="screen" id="screen-dataset">
-  <div style="padding:var(--gap)">
-    <div class="ds-hdr">
-      <div><div class="ds-title">Коллекция</div><div class="ds-cnt" id="dsCnt">0 образцов</div></div>
-      <button class="add-btn" onclick="openAdd()">+ Добавить</button>
+<!-- ADD STONE -->
+<div class="screen" id="addStone">
+  <div class="add-video-wrap">
+    <video id="addVideo" autoplay playsinline muted></video>
+    <div class="add-counter">
+      <div class="add-counter-badge" id="addCounter">0/7 фото</div>
     </div>
-    <div class="grid" id="grid"></div>
-    <div class="empty" id="emptyEl"><div class="empty-g">◇</div><div class="empty-t">Добавьте первый образец.</div></div>
+  </div>
+  <div class="add-shots-strip" id="shotsStrip">
+    <!-- thumbnails appear here -->
+  </div>
+  <div class="add-form">
+    <div class="add-form-title">Добавить камень</div>
+    <div class="add-form-sub" id="addFormSub">Сделайте минимум 3 снимка с разных углов</div>
+    <button class="add-shoot-btn" onclick="shootPhoto()">📷 Снять</button>
+    <input class="field" id="addName" placeholder="Название" autocomplete="off">
+    <input class="field" id="addLink" placeholder="https:// (необязательно)" autocomplete="off">
+    <button class="add-save-btn" id="addSaveBtn" onclick="saveNewStone()" disabled>Сохранить</button>
+    <button class="add-cancel-btn" onclick="goHome()">Отмена</button>
   </div>
 </div>
 
-<!-- ADMIN -->
-<div class="screen" id="screen-admin">
-  <div id="loginView">
-    <div class="login-wrap">
-      <div class="login-eye">Доступ</div>
-      <div class="login-title">Вход</div>
-      <div class="login-sub">Управление коллекцией доступно только владельцу.</div>
-      <label class="lbl">Пароль</label>
-      <input class="inp" type="password" id="passIn" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-      <div class="login-err" id="loginErr">Неверный пароль</div>
-      <button class="prim-btn" onclick="doLogin()">Войти</button>
-    </div>
+<!-- MY STONES -->
+<div class="screen" id="myStones">
+  <div class="list-header">
+    <div class="list-title">Мой камни</div>
+    <button class="list-back" onclick="goHome()">Назад</button>
   </div>
-  <div id="panelView" style="display:none">
-    <div style="padding:var(--gap)">
-      <div class="panel-card"><div class="panel-g">◈</div><div class="panel-t">Режим владельца</div><div class="panel-s">Вы управляете общей базой</div></div>
-      <button class="ghost-btn" onclick="switchTab('dataset')">Открыть коллекцию</button>
-      <button class="danger-btn" onclick="doLogout()">Выйти</button>
-    </div>
-  </div>
+  <div class="stones-list" id="stonesList"></div>
 </div>
 
-<!-- ADD SHEET -->
-<div class="overlay" id="addSheet" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sheet-title" id="sheetTit">Новый образец</div>
-    <div class="sheet-sub">Сделайте до 7 снимков с разных углов для точного распознавания</div>
-
-    <!-- 7 SHOTS -->
-    <div class="shots-progress">
-      <div class="shots-prog-bar"><div class="shots-prog-fill" id="shotsFill" style="width:0%"></div></div>
-      <div class="shots-prog-txt" id="shotsTxt">0 / 7 снимков · минимум 3</div>
-    </div>
-
-    <div class="shots-angles">
-      <div class="angle-lbl">Прямо</div>
-      <div class="angle-lbl">Лево</div>
-      <div class="angle-lbl">Право</div>
-      <div class="angle-lbl">Верх</div>
-      <div class="angle-lbl">Низ</div>
-      <div class="angle-lbl">45°</div>
-      <div class="angle-lbl">Макро</div>
-      <div class="angle-lbl"></div>
-    </div>
-
-    <div class="shots-grid" id="shotsGrid"></div>
-
-    <label class="lbl">Название</label>
-    <input class="inp" id="sName" placeholder="Нефрит зелёный №12">
-    <label class="lbl">Описание</label>
-    <input class="inp" id="sDesc" placeholder="Провенанс, характеристики...">
-    <label class="lbl">Тип контакта</label>
-    <div class="lt-wrap">
-      <button class="lt-btn active" onclick="setLt(this,'url')">🔗 Сайт</button>
-      <button class="lt-btn" onclick="setLt(this,'tg')">✈️ TG</button>
-      <button class="lt-btn" onclick="setLt(this,'email')">✉️ Email</button>
-      <button class="lt-btn" onclick="setLt(this,'phone')">📞 Тел.</button>
-    </div>
-    <input class="inp" id="sLink" placeholder="https://...">
-    <button class="prim-btn" id="saveStoBtn" onclick="saveStone()" disabled>Сохранить</button>
-    <button class="danger-btn" id="delBtn" style="display:none" onclick="deleteStone()">Удалить образец</button>
-  </div>
+<!-- ADMIN LOGIN -->
+<div class="screen" id="adminLogin">
+  <button style="position:absolute;top:20px;left:20px;background:none;border:none;color:rgba(240,237,230,0.5);font-size:22px;cursor:pointer" onclick="goHome()">✕</button>
+  <div class="admin-title">Вход</div>
+  <div class="admin-sub">Только владелец может добавлять камни</div>
+  <input class="field" type="password" id="adminPass" placeholder="Пароль" onkeydown="if(event.key==='Enter')tryLogin()" style="width:100%;max-width:320px;">
+  <div class="admin-err" id="adminErr">Неверный пароль</div>
+  <button class="btn-primary" onclick="tryLogin()" style="width:100%;max-width:320px;">Войти</button>
+  <button class="admin-out-btn" id="logoutBtn" style="display:none;width:100%;max-width:320px;" onclick="doLogout()">Выйти из аккаунта</button>
 </div>
 
-<!-- DETAIL SHEET -->
-<div class="overlay" id="detailSheet" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="sheet">
-    <div class="handle"></div>
-    <!-- shots strip -->
-    <div id="detailStrip" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px;"></div>
-    <div style="font-family:'Playfair Display',serif;font-size:22px;margin-bottom:6px" id="dName"></div>
-    <div style="font-size:13px;color:var(--white-d);font-style:italic;margin-bottom:12px;line-height:1.6" id="dDesc"></div>
-    <div style="font-size:9px;letter-spacing:0.1em;color:rgba(184,151,90,0.3);margin-bottom:18px;word-break:break-all" id="dHash"></div>
-    <a id="dLink" class="clink" href="#" target="_blank">
-      <div class="clink-ico" id="dIco">🔗</div>
-      <div><div class="clink-main" id="dLbl">Перейти</div><div class="clink-sub" id="dSub"></div></div>
+<!-- RESULT DETAIL -->
+<div class="screen" id="resultDetail">
+  <img id="detailImg" class="detail-img" style="display:none">
+  <div class="detail-body">
+    <div class="detail-pct" id="detailPct"></div>
+    <div class="detail-match-lbl">Совпадение</div>
+    <div class="detail-name" id="detailName"></div>
+    <div class="detail-desc" id="detailDesc"></div>
+    <div class="detail-id" id="detailId"></div>
+    <a id="detailCta" class="detail-cta" href="#" target="_blank" style="display:none">
+      <div class="detail-cta-ico" id="detailCtaIco">🔗</div>
+      <div>
+        <div class="detail-cta-main" id="detailCtaMain">Перейти</div>
+        <div class="detail-cta-sub" id="detailCtaSub"></div>
+      </div>
     </a>
-    <button class="ghost-btn" id="editBtn" style="display:none" onclick="editStone()">Редактировать</button>
+    <button class="detail-back" onclick="goScan()">← Сканировать ещё</button>
   </div>
 </div>
-
-<!-- hidden file inputs for each shot slot -->
-<input type="file" id="shotFileIn" accept="image/*" onchange="onShotFile(event)">
 
 <script>
 const PROJECT = 'jadekey-46f37';
 const API_KEY = 'AIzaSyCmc4qJFC0rkFvcz7ZBG42ApnZfCcrrT20';
 const BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents';
-const ADMIN_PASSWORD = 'jadekey2024';
-const THRESHOLD = 0.78;
-const MAX_SHOTS = 7;
+const ADMIN_PASS = 'jadekey2024';
+const THRESHOLD = 0.76;
 const MIN_SHOTS = 3;
-const ANGLE_LABELS = ['Прямо','Лево','Право','Верх','Низ','45°','Макро'];
+const MAX_SHOTS = 7;
 
 let dataset = [];
 let isAdmin = false;
-let imgData = null;
-let stream = null;
-let camActive = false;
-let ltType = 'url';
-let editId = null;
-let detailStone = null;
-let currentZoom = 1;
-let zoomTrack = null;
-// shots array for current add/edit
-let shots = []; // [{dataUrl, features}]
-let currentSlotIndex = -1;
+let sharedStream = null;
+let addShots = [];
 
-// ── FIRESTORE REST ──
-function fsVal(v){
-  if(v===null||v===undefined)return{nullValue:null};
-  if(typeof v==='string')return{stringValue:v};
-  if(typeof v==='number')return{doubleValue:v};
-  if(typeof v==='boolean')return{booleanValue:v};
-  if(Array.isArray(v))return{arrayValue:{values:v.map(fsVal)}};
-  if(typeof v==='object'){const f={};for(const k in v)f[k]=fsVal(v[k]);return{mapValue:{fields:f}};}
-  return{stringValue:String(v)};
-}
-function fromFs(fields){
-  if(!fields)return{};
-  const obj={};
-  for(const k in fields){
-    const v=fields[k];
-    if('stringValue'in v)obj[k]=v.stringValue;
-    else if('doubleValue'in v)obj[k]=v.doubleValue;
-    else if('integerValue'in v)obj[k]=Number(v.integerValue);
-    else if('booleanValue'in v)obj[k]=v.booleanValue;
-    else if('nullValue'in v)obj[k]=null;
-    else if('arrayValue'in v)obj[k]=(v.arrayValue.values||[]).map(x=>{const t=fromFs({_:x});return t['_'];});
-    else if('mapValue'in v)obj[k]=fromFs(v.mapValue.fields||{});
-  }
-  return obj;
-}
-function toFsFields(obj){const f={};for(const k in obj)f[k]=fsVal(obj[k]);return f;}
-
-async function fsGet(){
-  try{
-    const r=await fetch(BASE+'/stones?key='+API_KEY+'&pageSize=50');
-    const json=await r.json();
-    if(!json.documents)return[];
-    return json.documents.map(d=>({id:d.name.split('/').pop(),...fromFs(d.fields)}));
-  }catch(e){return[];}
-}
-async function fsAdd(data){
-  const r=await fetch(BASE+'/stones?key='+API_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:toFsFields(data)})});
-  return await r.json();
-}
-async function fsUpdate(id,data){
-  const mask=Object.keys(data).map(k=>'updateMask.fieldPaths='+k).join('&');
-  const r=await fetch(BASE+'/stones/'+id+'?'+mask+'&key='+API_KEY,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:toFsFields(data)})});
-  return await r.json();
-}
-async function fsDelete(id){await fetch(BASE+'/stones/'+id+'?key='+API_KEY,{method:'DELETE'});}
-
-async function loadData(){
-  dataset=await fsGet();
-  document.getElementById('metaText').textContent=dataset.length+' камней';
-  document.getElementById('dsCnt').textContent=dataset.length+' образцов';
-  renderGrid();
-}
+if (sessionStorage.getItem('jk_admin')) isAdmin = true;
 loadData();
-setInterval(loadData,30000);
 
-// ── ADMIN ──
-if(sessionStorage.getItem('jk_admin')){isAdmin=true;showAdmin();}
-function doLogin(){
-  if(document.getElementById('passIn').value===ADMIN_PASSWORD){isAdmin=true;sessionStorage.setItem('jk_admin','1');showAdmin();document.getElementById('loginErr').style.display='none';}
-  else document.getElementById('loginErr').style.display='block';
-}
-function doLogout(){isAdmin=false;sessionStorage.removeItem('jk_admin');document.getElementById('loginView').style.display='block';document.getElementById('panelView').style.display='none';document.getElementById('ownerPill').style.display='none';document.getElementById('tabCol').classList.add('hidden');document.getElementById('tabAdm').textContent='Вход';document.getElementById('passIn').value='';switchTab('scan');}
-function showAdmin(){document.getElementById('loginView').style.display='none';document.getElementById('panelView').style.display='block';document.getElementById('ownerPill').style.display='inline-block';document.getElementById('tabCol').classList.remove('hidden');document.getElementById('tabAdm').textContent='Владелец';}
-
-// ── TABS ──
-function switchTab(name){
-  ['scan','dataset','admin'].forEach(n=>document.getElementById('screen-'+n).classList.toggle('active',n===name));
-  document.getElementById('tabScan').classList.toggle('active',name==='scan');
-  document.getElementById('tabCol').classList.toggle('active',name==='dataset');
-  document.getElementById('tabAdm').classList.toggle('active',name==='admin');
-  if(name==='dataset')renderGrid();
-}
-
-// ── CAMERA + AUTOFOCUS + ZOOM ──
-async function startCam(){
-  setSt('Запуск камеры…');
-  try{
-    if(stream)stream.getTracks().forEach(t=>t.stop());
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1920}}});
-    const track=stream.getVideoTracks()[0];
-    if(track&&track.applyConstraints){
-      try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
+// Request camera permission immediately on load
+async function initCamera() {
+  try {
+    if (sharedStream) return;
+    sharedStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } }
+    });
+    const track = sharedStream.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {}
     }
-    zoomTrack=track;
-    const v=document.getElementById('videoEl');
-    v.srcObject=stream;v.style.display='block';
-    document.getElementById('canvasEl').style.display='none';
-    camActive=true;imgData=null;
-    document.getElementById('scanBtn').disabled=false;
-    document.getElementById('vfHint').textContent='Поднесите камень · нажмите для фокуса';
-    setSt('');
-    document.getElementById('resultArea').innerHTML='';
-    document.getElementById('zoomSlider').value=1;
-    document.getElementById('zoomVal').textContent='1×';
-    currentZoom=1;
-  }catch(e){setSt('Используйте кнопку «Фото»');}
+  } catch(e) { console.log('Camera init:', e.message); }
+}
+// FIRESTORE REST
+function fsVal(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'number') return { doubleValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(fsVal) } };
+  if (typeof v === 'object') { const f = {}; for (const k in v) f[k] = fsVal(v[k]); return { mapValue: { fields: f } }; }
+  return { stringValue: String(v) };
+}
+function fromFs(fields) {
+  if (!fields) return {};
+  const o = {};
+  for (const k in fields) {
+    const v = fields[k];
+    if ('stringValue' in v) o[k] = v.stringValue;
+    else if ('doubleValue' in v) o[k] = v.doubleValue;
+    else if ('integerValue' in v) o[k] = Number(v.integerValue);
+    else if ('booleanValue' in v) o[k] = v.booleanValue;
+    else if ('nullValue' in v) o[k] = null;
+    else if ('arrayValue' in v) o[k] = (v.arrayValue.values || []).map(x => fromFs({ _: x })['_']);
+    else if ('mapValue' in v) o[k] = fromFs(v.mapValue.fields || {});
+  }
+  return o;
 }
 
-function applyZoom(val){
-  currentZoom=parseFloat(val);
-  document.getElementById('zoomVal').textContent=currentZoom.toFixed(1)+'×';
-  if(zoomTrack&&zoomTrack.applyConstraints){
-    try{zoomTrack.applyConstraints({advanced:[{zoom:currentZoom}]});}catch(e){
-      // CSS zoom fallback
-      const v=document.getElementById('videoEl');
-      v.style.transform='scale('+currentZoom+')';
-      v.style.transformOrigin='center center';
+async function loadData() {
+  try {
+    const r = await fetch(BASE + '/stones?key=' + API_KEY + '&pageSize=100');
+    const j = await r.json();
+    dataset = j.documents ? j.documents.map(d => ({ id: d.name.split('/').pop(), ...fromFs(d.fields) })) : [];
+  } catch(e) { dataset = []; }
+}
+
+async function fsAdd(data) {
+  const r = await fetch(BASE + '/stones?key=' + API_KEY, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(data).map(([k,v]) => [k, fsVal(v)])) })
+  });
+  return r.json();
+}
+
+async function fsDelete(id) {
+  await fetch(BASE + '/stones/' + id + '?key=' + API_KEY, { method: 'DELETE' });
+}
+
+// NAVIGATION
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome() {
+  // Don't stop stream, keep it alive
+  showScreen('home');
+}
+
+function goScan() {
+  showScreen('scan');
+  startCam('scanVideo');
+}
+
+function goAdd() {
+  if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
+  addShots = [];
+  document.getElementById('addName').value = '';
+  document.getElementById('addLink').value = '';
+  document.getElementById('addCounter').textContent = '0/7 фото';
+  document.getElementById('addSaveBtn').disabled = true;
+  renderStrip();
+  showScreen('addStone');
+  startCam('addVideo');
+}
+
+function goMyStones() {
+  if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
+  renderStonesList();
+  showScreen('myStones');
+}
+
+async function startCam(videoId) {
+  const v = document.getElementById(videoId);
+  try {
+    // Stop any existing stream
+    if (sharedStream) {
+      sharedStream.getTracks().forEach(t => t.stop());
+      sharedStream = null;
     }
+    sharedStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1920 } }
+    });
+    v.srcObject = sharedStream;
+    await v.play();
+    const track = sharedStream.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch(e) {}
+    }
+    // Clear any error hint
+    if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Наведите на камень и нажмите кнопку';
+  } catch(e) {
+    if (videoId === 'scanVideo') document.getElementById('scanHint').textContent = 'Камера недоступна — разрешите доступ';
+    console.log('Camera error:', e.message);
+  }
+}
+
+// ADMIN
+function tryLogin() {
+  if (document.getElementById('adminPass').value === ADMIN_PASS) {
+    isAdmin = true; sessionStorage.setItem('jk_admin', '1');
+    document.getElementById('adminErr').style.display = 'none';
+    document.getElementById('adminPass').value = '';
+    goHome();
   } else {
-    const v=document.getElementById('videoEl');
-    v.style.transform='scale('+currentZoom+')';
-    v.style.transformOrigin='center center';
+    document.getElementById('adminErr').style.display = 'block';
+  }
+}
+function doLogout() { isAdmin = false; sessionStorage.removeItem('jk_admin'); goHome(); }
+function updateAdminUI() {
+  document.getElementById('logoutBtn').style.display = isAdmin ? 'block' : 'none';
+}
+
+// SHOOT (ADD MODE)
+async function shootPhoto() {
+  if (addShots.length >= MAX_SHOTS) return;
+  const v = document.getElementById('addVideo');
+  if (!v.srcObject) return;
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth || 640; c.height = v.videoHeight || 640;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const dataUrl = await compressCanvas(c);
+  const features = await getFeaturesFromUrl(dataUrl);
+  // Check diversity
+  for (const s of addShots) {
+    if (cosine(features, s.features) > 0.97) {
+      document.getElementById('addFormSub').textContent = 'Снимок слишком похож — смените угол';
+      setTimeout(() => { document.getElementById('addFormSub').textContent = addShots.length >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов'; }, 2000);
+      return;
+    }
+  }
+  addShots.push({ dataUrl, features });
+  renderStrip();
+  updateAddCounter();
+}
+
+function renderStrip() {
+  const strip = document.getElementById('shotsStrip');
+  strip.innerHTML = '';
+  addShots.forEach((s, i) => {
+    const img = document.createElement('img');
+    img.className = 'shot-thumb'; img.src = s.dataUrl;
+    img.onclick = () => { addShots.splice(i, 1); renderStrip(); updateAddCounter(); };
+    strip.appendChild(img);
+  });
+  for (let i = addShots.length; i < MAX_SHOTS; i++) {
+    const ph = document.createElement('div'); ph.className = 'shot-empty'; ph.textContent = '+';
+    strip.appendChild(ph);
   }
 }
 
-function tapFocus(e){
-  if(!camActive)return;
-  const rect=e.currentTarget.getBoundingClientRect();
-  const x=(e.clientX-rect.left)/rect.width;
-  const y=(e.clientY-rect.top)/rect.height;
-  // Show focus ring
-  const ring=document.getElementById('focusRing');
-  ring.style.left=(x*100)+'%';
-  ring.style.top=(y*100)+'%';
-  ring.classList.remove('show');
-  void ring.offsetWidth;
-  ring.classList.add('show');
-  // Reticle animate
-  const ret=document.getElementById('reticle');
-  ret.classList.add('focusing');
-  setTimeout(()=>ret.classList.remove('focusing'),500);
-  // Apply focus point if supported
-  if(zoomTrack&&zoomTrack.applyConstraints){
-    try{zoomTrack.applyConstraints({advanced:[{pointOfInterest:{x,y},focusMode:'single-shot'}]});}catch(ee){}
+function updateAddCounter() {
+  const n = addShots.length;
+  document.getElementById('addCounter').textContent = n + '/7 фото';
+  document.getElementById('addSaveBtn').disabled = n < MIN_SHOTS;
+  document.getElementById('addFormSub').textContent = n >= MIN_SHOTS ? 'Можно сохранить или добавить ещё' : 'Сделайте минимум 3 снимка с разных углов';
+}
+
+// SAVE
+async function saveNewStone() {
+  const name = document.getElementById('addName').value.trim();
+  if (!name) { alert('Введите название'); return; }
+  if (addShots.length < MIN_SHOTS) return;
+  showVeil('Сохранение…');
+  try {
+    await fsAdd({
+      name,
+      link: document.getElementById('addLink').value.trim(),
+      createdAt: Date.now(),
+      shotsCount: addShots.length,
+      coverImage: addShots[0].dataUrl,
+      features: addShots[0].features,
+      shotsFeatures: addShots.map(s => s.features),
+      shotsImages: addShots.map(s => s.dataUrl)
+    });
+    await loadData();
+    hideVeil();
+    renderStonesList();
+    showScreen('myStones');
+  } catch(e) { hideVeil(); alert('Ошибка: ' + e.message); }
+}
+
+// STONES LIST
+function renderStonesList() {
+  const list = document.getElementById('stonesList');
+  if (dataset.length === 0) {
+    list.innerHTML = '<div class="empty-list"><div class="eg">◇</div><p>Камней пока нет</p></div>';
+    return;
+  }
+  list.innerHTML = '';
+  dataset.forEach(s => {
+    const row = document.createElement('div'); row.className = 'stone-row';
+    const thumb = s.coverImage ? `<img class="stone-thumb" src="${s.coverImage}">` : `<div class="stone-thumb-ph">◈</div>`;
+    const shots = s.shotsCount || 1;
+    row.innerHTML = `${thumb}<div class="stone-info"><div class="stone-name">${esc(s.name)}</div><div class="stone-meta">${shots} снимк${shots===1?'':shots<5?'а':'ов'} · ${esc(s.link||'—')}</div></div><button class="stone-del" onclick="delStone('${s.id}',event)">Удалить</button>`;
+    list.appendChild(row);
+  });
+}
+
+async function delStone(id, e) {
+  e.stopPropagation();
+  if (!confirm('Удалить?')) return;
+  showVeil('Удаление…');
+  await fsDelete(id);
+  await loadData();
+  hideVeil();
+  renderStonesList();
+}
+
+// SCAN
+async function doScan() {
+  if (dataset.length === 0) {
+    document.getElementById('scanHint').textContent = 'База пуста — добавьте камни';
+    return;
+  }
+  const v = document.getElementById('scanVideo');
+  if (!v.srcObject || !v.videoWidth) {
+    document.getElementById('scanHint').textContent = 'Камера не готова';
+    return;
+  }
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('scanBtn').textContent = 'Анализ…';
+  document.getElementById('scanHint').textContent = 'Идёт сравнение…';
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const src = c.toDataURL('image/jpeg', 0.9);
+  const qf = await getFeaturesFromUrl(src);
+  let best = null, bestScore = -1;
+  for (const stone of dataset) {
+    const allF = [];
+    if (stone.features && stone.features.length) allF.push(stone.features);
+    if (stone.shotsFeatures) stone.shotsFeatures.forEach(f => { if (f && f.length) allF.push(f); });
+    for (const f of allF) {
+      const sc = cosine(qf, f);
+      if (sc > bestScore) { bestScore = sc; best = stone; }
+    }
+  }
+  document.getElementById('scanBtn').disabled = false;
+  document.getElementById('scanBtn').textContent = 'Идентифицировать';
+  if (best && bestScore >= THRESHOLD) {
+    document.getElementById('scanHint').textContent = '✓ ' + best.name;
+    showScanBadge(best, bestScore);
+    setTimeout(() => showResultDetail(best, bestScore), 800);
+  } else {
+    document.getElementById('scanHint').textContent = '∅ Не найдено (' + (bestScore*100).toFixed(1) + '%)';
+    hideScanBadge();
   }
 }
 
-function loadFile(e){
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    imgData=ev.target.result;
-    const img=new Image(),c=document.getElementById('canvasEl'),ctx=c.getContext('2d');
-    img.onload=()=>{c.width=img.width;c.height=img.height;ctx.drawImage(img,0,0);document.getElementById('videoEl').style.display='none';c.style.display='block';};
-    img.src=imgData;
-    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;camActive=false;zoomTrack=null;}
-    document.getElementById('scanBtn').disabled=false;
-    document.getElementById('vfHint').textContent='Изображение загружено';
-    setSt('');document.getElementById('resultArea').innerHTML='';
-  };
-  r.readAsDataURL(file);e.target.value='';
+function showScanBadge(stone, score) {
+  document.getElementById('scanBadgeName').textContent = stone.name;
+  document.getElementById('scanBadgePct').textContent = (score*100).toFixed(1) + '% совпадение';
+  document.getElementById('scanBadge').style.display = 'block';
+}
+function hideScanBadge() { document.getElementById('scanBadge').style.display = 'none'; }
+
+function showResultDetail(stone, score) {
+  const img = document.getElementById('detailImg');
+  if (stone.coverImage) { img.src = stone.coverImage; img.style.display = 'block'; }
+  else img.style.display = 'none';
+  document.getElementById('detailPct').textContent = (score*100).toFixed(1) + '%';
+  document.getElementById('detailName').textContent = stone.name;
+  document.getElementById('detailDesc').textContent = stone.desc || '';
+  document.getElementById('detailId').textContent = stone.features ? 'ID: ' + hashF(stone.features) : '';
+  const cta = document.getElementById('detailCta');
+  if (stone.link) {
+    cta.href = buildHref(stone.link);
+    document.getElementById('detailCtaIco').textContent = getIcon(stone.link);
+    document.getElementById('detailCtaMain').textContent = getLabel(stone.link);
+    document.getElementById('detailCtaSub').textContent = stone.link;
+    cta.style.display = 'flex';
+    setTimeout(() => window.open(buildHref(stone.link), '_blank'), 1500);
+  } else { cta.style.display = 'none'; }
+  showScreen('resultDetail');
 }
 
-window.addEventListener('load',()=>startCam());
+function buildHref(val) {
+  if (!val) return '#';
+  if (val.startsWith('http')) return val;
+  if (val.startsWith('@') || val.includes('t.me')) return 'https://t.me/' + val.replace('@','');
+  if (val.includes('@')) return 'mailto:' + val;
+  return 'https://' + val;
+}
+function getIcon(val) {
+  if (!val) return '🔗';
+  if (val.includes('t.me') || val.startsWith('@')) return '✈️';
+  if (val.includes('@') && !val.startsWith('http')) return '✉️';
+  return '🔗';
+}
+function getLabel(val) {
+  if (!val) return 'Перейти';
+  if (val.includes('t.me') || val.startsWith('@')) return 'Написать в Telegram';
+  if (val.includes('@') && !val.startsWith('http')) return 'Написать письмо';
+  return 'Открыть сайт';
+}
 
-// ── FEATURES ──
-function getFeatures(src){
-  return new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{const s=128,c=document.createElement('canvas');c.width=s;c.height=s;c.getContext('2d').drawImage(img,0,0,s,s);resolve(extractF(c.getContext('2d').getImageData(0,0,s,s).data,s,s));};
-    img.src=src;
+// FEATURES
+function getFeaturesFromUrl(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const s=128, c=document.createElement('canvas'); c.width=s; c.height=s;
+      c.getContext('2d').drawImage(img,0,0,s,s);
+      resolve(extractF(c.getContext('2d').getImageData(0,0,s,s).data,s,s));
+    };
+    img.src = src;
   });
 }
 function extractF(data,W,H){
-  const f=[];
-  const bins=32,hR=new Array(bins).fill(0),hG=new Array(bins).fill(0),hB=new Array(bins).fill(0),total=W*H;
+  const f=[],bins=32,hR=new Array(bins).fill(0),hG=new Array(bins).fill(0),hB=new Array(bins).fill(0),total=W*H;
   for(let i=0;i<data.length;i+=4){hR[Math.floor(data[i]/(256/bins))]++;hG[Math.floor(data[i+1]/(256/bins))]++;hB[Math.floor(data[i+2]/(256/bins))]++;}
   hR.forEach(v=>f.push(v/total));hG.forEach(v=>f.push(v/total));hB.forEach(v=>f.push(v/total));
   const gN=4,cW=Math.floor(W/gN),cH=Math.floor(H/gN);
@@ -536,239 +606,10 @@ function extractF(data,W,H){
 }
 function cosine(a,b){let dot=0,na=0,nb=0;const len=Math.min(a.length,b.length);for(let i=0;i<len;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-9);}
 function hashF(f){if(!f||!f.length)return'—';return CryptoJS.SHA256(f.slice(0,20).map(v=>v.toFixed(3)).join(',')).toString().slice(0,16).toUpperCase();}
-
-// ── SCAN with multi-shot matching ──
-async function doScan(){
-  if(dataset.length===0){showNoMatch(null);return;}
-  let src=imgData;
-  if(camActive&&!src){
-    const v=document.getElementById('videoEl'),c=document.getElementById('canvasEl'),ctx=c.getContext('2d');
-    c.width=v.videoWidth||640;c.height=v.videoHeight||640;
-    ctx.drawImage(v,0,0);src=c.toDataURL('image/jpeg',0.92);
-    c.style.display='block';v.style.display='none';
-  }
-  if(!src){setSt('Нет изображения');return;}
-  document.getElementById('vf').classList.add('scanning');
-  document.getElementById('scanBtn').disabled=true;
-  document.getElementById('scanBtn').textContent='Анализ...';
-  setSt('Извлечение паттернов…');
-  document.getElementById('resultArea').innerHTML='';
-  await new Promise(r=>setTimeout(r,60));
-  const qf=await getFeatures(src);
-  const qh=hashF(qf);
-  let best=null,bestScore=-1;
-  for(const stone of dataset){
-    // Compare against ALL shots, take best score
-    const allFeatures=[];
-    if(stone.features&&stone.features.length)allFeatures.push(stone.features);
-    if(stone.shotsFeatures&&Array.isArray(stone.shotsFeatures)){
-      stone.shotsFeatures.forEach(sf=>{if(sf&&sf.length)allFeatures.push(sf);});
-    }
-    for(const f of allFeatures){
-      const sc=cosine(qf,f);
-      if(sc>bestScore){bestScore=sc;best=stone;}
-    }
-  }
-  document.getElementById('vf').classList.remove('scanning');
-  document.getElementById('scanBtn').disabled=false;
-  document.getElementById('scanBtn').textContent='Идентифицировать';
-  if(best&&bestScore>=THRESHOLD){
-    setSt('✓ '+(bestScore*100).toFixed(1)+'%  ·  '+qh);
-    showMatch(best,bestScore);
-    if(best.link)setTimeout(()=>window.open(buildHref(best.linkType,best.link),'_blank'),1500);
-  }else{
-    setSt('∅ не идентифицировано  ·  '+qh);
-    showNoMatch(bestScore);
-  }
-}
-
-function setSt(t){document.getElementById('scanSt').textContent=t;}
-
-function showMatch(stone,score){
-  const pct=(score*100).toFixed(1);
-  const thumb=stone.coverImage?`<img class="res-img" src="${stone.coverImage}">`:'';
-  const contact=stone.link?buildCLink(stone):'';
-  const shots=stone.shotsCount||1;
-  document.getElementById('resultArea').innerHTML=`<div class="result-card match">${thumb}<div class="res-body"><div class="res-pct-row"><div class="res-pct">${pct}<span style="font-size:16px;color:var(--white-d)">%</span></div><div class="res-lbl">Совпадение · ${shots} снимков</div></div><div class="res-bar"><div class="res-bar-fill" style="width:${pct}%"></div></div><div class="res-name">${esc(stone.name)}</div>${stone.desc?`<div class="res-desc">${esc(stone.desc)}</div>`:''}<div class="res-hash">ID: ${hashF(stone.features||[])}</div>${contact}${stone.link?'<div class="nav-hint">Переход через 1.5 с…</div>':''}</div></div>`;
-}
-function showNoMatch(score){
-  document.getElementById('resultArea').innerHTML=`<div class="result-card no-match"><div class="no-match-inner"><div class="no-match-g">◇</div><div class="no-match-t">Не идентифицировано</div><div class="no-match-s">${score!==null?'Ближайшее: '+(score*100).toFixed(1)+'%':'Добавьте образцы в коллекцию'}</div></div></div>`;
-}
-function buildCLink(stone){const icons={url:'🔗',tg:'✈️',email:'✉️',phone:'📞'};const labels={url:'Перейти на сайт',tg:'Telegram',email:'Email',phone:'Позвонить'};return`<a class="clink" href="${buildHref(stone.linkType,stone.link)}" target="_blank"><div class="clink-ico">${icons[stone.linkType]||'🔗'}</div><div><div class="clink-main">${labels[stone.linkType]||'Перейти'}</div><div class="clink-sub">${esc(stone.link)}</div></div></a>`;}
-function buildHref(type,val){if(type==='email')return`mailto:${val}`;if(type==='phone')return`tel:${val}`;if(type==='tg')return val.startsWith('http')?val:`https://t.me/${val.replace('@','')}`;return val.startsWith('http')?val:'https://'+val;}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-// ── GRID ──
-function renderGrid(){
-  if(!isAdmin)return;
-  const grid=document.getElementById('grid'),empty=document.getElementById('emptyEl');
-  grid.innerHTML='';
-  if(dataset.length===0){empty.style.display='block';return;}
-  empty.style.display='none';
-  dataset.forEach(s=>{
-    const tile=document.createElement('div');tile.className='tile';
-    const img=s.coverImage?`<img class="tile-img" src="${s.coverImage}" loading="lazy">`:`<div class="tile-ph">◈</div>`;
-    const shots=s.shotsCount||1;
-    tile.innerHTML=`${img}<div class="tile-info"><div class="tile-name">${esc(s.name)}</div><div class="tile-shots">${shots} снимк${shots===1?'':shots<5?'а':'ов'}</div><div class="tile-link">${esc(s.link||'—')}</div></div>`;
-    tile.onclick=()=>openDetail(s);
-    grid.appendChild(tile);
-  });
-}
-
-// ── SHOTS UI ──
-function renderShotsGrid(){
-  const grid=document.getElementById('shotsGrid');
-  grid.innerHTML='';
-  for(let i=0;i<MAX_SHOTS;i++){
-    const slot=document.createElement('div');
-    slot.className='shot-slot'+(shots[i]?' filled':'');
-    slot.dataset.idx=i;
-    if(shots[i]){
-      const img=document.createElement('img');
-      img.src=shots[i].dataUrl;
-      slot.appendChild(img);
-      const del=document.createElement('div');
-      del.className='shot-del';del.textContent='✕';
-      del.onclick=(e)=>{e.stopPropagation();shots.splice(i,1);renderShotsGrid();updateShotsProgress();};
-      slot.appendChild(del);
-    } else {
-      const num=document.createElement('div');num.className='shot-num';num.textContent=(i+1);slot.appendChild(num);
-      const lbl=document.createElement('div');lbl.className='shot-lbl';lbl.textContent=ANGLE_LABELS[i]||'';slot.appendChild(lbl);
-    }
-    slot.onclick=()=>{currentSlotIndex=i;document.getElementById('shotFileIn').click();};
-    grid.appendChild(slot);
-  }
-}
-
-function updateShotsProgress(){
-  const n=shots.length;
-  document.getElementById('shotsFill').style.width=(n/MAX_SHOTS*100)+'%';
-  document.getElementById('shotsTxt').textContent=n+' / '+MAX_SHOTS+' снимков · минимум '+MIN_SHOTS;
-  document.getElementById('saveStoBtn').disabled=n<MIN_SHOTS;
-}
-
-function onShotFile(e){
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=async ev=>{
-    const dataUrl=ev.target.result;
-    const features=await getFeatures(dataUrl);
-    const compressed=await compress(dataUrl);
-    if(currentSlotIndex>=0&&currentSlotIndex<MAX_SHOTS){
-      shots[currentSlotIndex]={dataUrl:compressed,features};
-    } else {
-      if(shots.length<MAX_SHOTS)shots.push({dataUrl:compressed,features});
-    }
-    renderShotsGrid();
-    updateShotsProgress();
-  };
-  r.readAsDataURL(file);e.target.value='';
-}
-
-// ── ADD/EDIT ──
-function openAdd(){
-  if(!isAdmin)return;
-  editId=null;shots=[];
-  document.getElementById('sheetTit').textContent='Новый образец';
-  document.getElementById('sName').value='';document.getElementById('sDesc').value='';document.getElementById('sLink').value='';
-  document.getElementById('delBtn').style.display='none';
-  setLtRaw('url');
-  renderShotsGrid();
-  updateShotsProgress();
-  document.getElementById('addSheet').style.display='flex';
-}
-
-function setLt(btn,type){document.querySelectorAll('.lt-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');ltType=type;const ph={url:'https://...',tg:'@username',email:'info@...',phone:'+7...'};document.getElementById('sLink').placeholder=ph[type]||'';}
-function setLtRaw(type){ltType=type;const t=['url','tg','email','phone'];document.querySelectorAll('.lt-btn').forEach((b,i)=>b.classList.toggle('active',t[i]===type));}
-
-async function compress(src){return new Promise(res=>{const img=new Image();img.onload=()=>{const max=480,scale=Math.min(max/img.width,max/img.height,1);const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.65));};img.src=src;});}
-
-async function saveStone(){
-  if(!isAdmin||shots.length<MIN_SHOTS)return;
-  const name=document.getElementById('sName').value.trim();
-  if(!name){alert('Введите название');return;}
-  showSaving(true);
-  try{
-    const shotsDataUrls=shots.map(s=>s.dataUrl);
-    const shotsFeatures=shots.map(s=>s.features);
-    const coverImage=shotsDataUrls[0];
-    const features=shotsFeatures[0]; // primary for backward compat
-    const data={
-      name,
-      desc:document.getElementById('sDesc').value.trim(),
-      link:document.getElementById('sLink').value.trim(),
-      linkType:ltType,
-      updatedAt:Date.now(),
-      shotsCount:shots.length,
-      coverImage,
-      features,
-      shotsFeatures,
-      shotsImages:shotsDataUrls
-    };
-    if(editId)await fsUpdate(editId,data);
-    else await fsAdd(data);
-    document.getElementById('addSheet').style.display='none';
-    await loadData();
-  }catch(e){alert('Ошибка: '+e.message);}
-  finally{showSaving(false);}
-}
-
-async function deleteStone(){
-  if(!isAdmin||!editId)return;
-  if(!confirm('Удалить образец?'))return;
-  showSaving(true);
-  try{await fsDelete(editId);document.getElementById('addSheet').style.display='none';document.getElementById('detailSheet').style.display='none';await loadData();}
-  catch(e){alert('Ошибка: '+e.message);}
-  finally{showSaving(false);}
-}
-
-// ── DETAIL ──
-function openDetail(s){
-  detailStone=s;
-  // shots strip
-  const strip=document.getElementById('detailStrip');
-  strip.innerHTML='';
-  const imgs=s.shotsImages||[s.coverImage].filter(Boolean);
-  imgs.forEach(src=>{
-    if(!src)return;
-    const img=document.createElement('img');
-    img.src=src;
-    img.style.cssText='width:64px;height:64px;object-fit:cover;border-radius:3px;flex-shrink:0;filter:brightness(0.85);border:1px solid rgba(184,151,90,0.2)';
-    strip.appendChild(img);
-  });
-  document.getElementById('dName').textContent=s.name;
-  document.getElementById('dDesc').textContent=s.desc||'';
-  document.getElementById('dHash').textContent=s.features?'ID: '+hashF(s.features):'';
-  const icons={url:'🔗',tg:'✈️',email:'✉️',phone:'📞'};
-  const labels={url:'Открыть сайт',tg:'Telegram',email:'Email',phone:'Телефон'};
-  document.getElementById('dIco').textContent=icons[s.linkType]||'🔗';
-  document.getElementById('dLbl').textContent=labels[s.linkType]||'Перейти';
-  document.getElementById('dSub').textContent=s.link||'—';
-  document.getElementById('dLink').href=s.link?buildHref(s.linkType,s.link):'#';
-  document.getElementById('editBtn').style.display=isAdmin?'block':'none';
-  document.getElementById('detailSheet').style.display='flex';
-}
-
-function editStone(){
-  if(!isAdmin)return;
-  editId=detailStone.id;
-  // restore shots
-  shots=[];
-  const imgs=detailStone.shotsImages||[];
-  const feats=detailStone.shotsFeatures||[];
-  imgs.forEach((img,i)=>{if(img)shots.push({dataUrl:img,features:feats[i]||[]});});
-  document.getElementById('sheetTit').textContent='Редактировать';
-  document.getElementById('sName').value=detailStone.name;
-  document.getElementById('sDesc').value=detailStone.desc||'';
-  document.getElementById('sLink').value=detailStone.link||'';
-  setLtRaw(detailStone.linkType||'url');
-  document.getElementById('delBtn').style.display='block';
-  renderShotsGrid();updateShotsProgress();
-  document.getElementById('detailSheet').style.display='none';
-  document.getElementById('addSheet').style.display='flex';
-}
-
-function showSaving(show){let el=document.getElementById('sv');if(show&&!el){el=document.createElement('div');el.id='sv';el.className='saving-veil';el.innerHTML='<div class="ring"></div><div class="saving-lbl">Сохранение</div>';document.body.appendChild(el);}else if(!show&&el)el.remove();}
+async function compressCanvas(c){const max=480,scale=Math.min(max/c.width,max/c.height,1);const c2=document.createElement('canvas');c2.width=Math.round(c.width*scale);c2.height=Math.round(c.height*scale);c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);return c2.toDataURL('image/jpeg',0.68);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showVeil(msg){let el=document.getElementById('veil');if(!el){el=document.createElement('div');el.id='veil';el.className='veil';el.innerHTML=`<div class="veil-ring"></div><div class="veil-lbl">${msg}</div>`;document.body.appendChild(el);}}
+function hideVeil(){const el=document.getElementById('veil');if(el)el.remove();}
 </script>
 </body>
 </html>
