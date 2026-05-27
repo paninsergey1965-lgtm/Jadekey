@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import urllib.request
 
 import numpy as np
 import onnxruntime as ort
@@ -17,12 +18,24 @@ RESIZE_SHORT = int(round(IMAGE_SIZE / ROI_FRAC))
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
-MODEL_PATH = os.environ.get("MODEL_PATH", "model.onnx")
+MODEL_PATH = os.environ.get("MODEL_PATH", "/tmp/model.onnx")
+MODEL_URL  = os.environ.get("MODEL_URL", "")
+
 _session = None
+
+def download_model():
+    if os.path.exists(MODEL_PATH):
+        return
+    if not MODEL_URL:
+        raise RuntimeError("MODEL_URL not set and model.onnx not found")
+    print(f"Downloading model from {MODEL_URL}...")
+    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+    print("Model downloaded.")
 
 def get_session():
     global _session
     if _session is None:
+        download_model()
         _session = ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
     return _session
 
@@ -61,7 +74,10 @@ def embed():
         img = Image.open(io.BytesIO(base64.b64decode(b64)))
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-    sess = get_session()
+    try:
+        sess = get_session()
+    except Exception as e:
+        return jsonify({"error": f"model load failed: {e}"}), 500
     inp  = sess.get_inputs()[0].name
     out  = sess.get_outputs()[0].name
     raw  = sess.run([out], {inp: preprocess(img)})[0][0]
