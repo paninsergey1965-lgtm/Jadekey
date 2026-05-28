@@ -493,9 +493,17 @@ async function doScan() {
     document.getElementById('scanBadge').onclick = () => showResultDetail(best, bestScore);
     document.getElementById('scanBadge').style.cursor = 'pointer';
     const btn = document.getElementById('scanBtn');
-    btn.textContent = 'Показать результат →';
-    btn.disabled = false;
-    btn.onclick = () => showResultDetail(best, bestScore);
+    const _c = best.contacts ? JSON.parse(best.contacts) : {};
+    if (_c.site) {
+      const _url = _c.site.startsWith('http') ? _c.site : 'https://' + _c.site;
+      btn.textContent = 'Открыть сайт →';
+      btn.disabled = false;
+      btn.onclick = () => { openLink(_url); };
+    } else {
+      btn.textContent = 'Показать результат →';
+      btn.disabled = false;
+      btn.onclick = () => showResultDetail(best, bestScore);
+    }
   } else {
     document.getElementById('scanHint').textContent = '∅ Не найдено (' + (bestScore*100).toFixed(1) + '%)';
     document.getElementById('scanBadge').style.display = 'none';
