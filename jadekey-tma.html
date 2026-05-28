@@ -375,8 +375,21 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goHome() { showScreen('home'); }
-function goScan() { showScreen('scan'); startCam('scanVideo'); }
+function goHome() {
+  if (sharedStream) { sharedStream.getTracks().forEach(t => t.stop()); sharedStream = null; }
+  showScreen('home');
+}
+function goScan() {
+  // Reset scan button to initial state
+  const btn = document.getElementById('scanBtn');
+  btn.textContent = 'Идентифицировать';
+  btn.disabled = false;
+  btn.onclick = doScan;
+  document.getElementById('scanBadge').style.display = 'none';
+  document.getElementById('scanHint').textContent = 'Наведите на камень и нажмите кнопку';
+  showScreen('scan');
+  startCam('scanVideo');
+}
 function goAdd() {
   if (!isAdmin) { showScreen('adminLogin'); updateAdminUI(); return; }
   addShots = []; activeContacts = new Set();
