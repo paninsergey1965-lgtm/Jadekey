@@ -83,6 +83,7 @@ html, body { height: 100%; background: #0d0d0d !important; color: #f0ede6; font-
 .stone-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stone-meta { font-size: 12px; color: rgba(240,237,230,0.4); margin-top: 2px; }
 .stone-del { padding: 6px 10px; background: none; border: none; color: rgba(196,169,106,0.6); font-size: 13px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.stone-edit { padding: 6px 10px; background: none; border: none; color: rgba(196,169,106,0.9); font-size: 13px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
 .empty-list { text-align: center; padding: 60px 20px; color: rgba(240,237,230,0.3); }
 .empty-list .eg { font-size: 48px; margin-bottom: 14px; }
 #adminLogin { background: #0d0d0d; align-items: center; justify-content: center; padding: 40px 32px; }
@@ -331,6 +332,44 @@ async function fsAdd(data) {
 async function fsDelete(id) {
   await fetch(BASE + '/stones/' + id + '?key=' + API_KEY, { method: 'DELETE' });
 }
+async function fsUpdate(id, data) {
+  const r = await fetch(BASE + '/stones/' + id + '?key=' + API_KEY + '&updateMask.fieldPaths=contacts', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { contacts: { stringValue: JSON.stringify(data) } } })
+  });
+  return r.json();
+}
+function editStone(id, e) {
+  e.stopPropagation();
+  const stone = dataset.find(s => s.id === id);
+  if (!stone) return;
+  const contacts = stone.contacts ? JSON.parse(stone.contacts) : {};
+  showScreen('editContacts');
+  document.getElementById('editStoneId').value = id;
+  document.getElementById('editPhone').value = contacts.phone || '';
+  document.getElementById('editTg').value = contacts.tg || '';
+  document.getElementById('editEmail').value = contacts.email || '';
+  document.getElementById('editSite').value = contacts.site || '';
+  document.getElementById('editStoneName').textContent = stone.name;
+}
+async function saveEditStone() {
+  const id = document.getElementById('editStoneId').value;
+  const contacts = {};
+  const phone = document.getElementById('editPhone').value.trim();
+  const tg = document.getElementById('editTg').value.trim();
+  const email = document.getElementById('editEmail').value.trim();
+  const site = document.getElementById('editSite').value.trim();
+  if (phone) contacts.phone = phone;
+  if (tg) contacts.tg = tg;
+  if (email) contacts.email = email;
+  if (site) contacts.site = site;
+  showVeil('Сохранение…');
+  await fsUpdate(id, contacts);
+  await loadData();
+  hideVeil();
+  renderStonesList();
+  showScreen('myStones');
+}
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -449,7 +488,7 @@ function renderStonesList() {
     const row = document.createElement('div'); row.className = 'stone-row';
     const thumb = s.coverImage ? `<img class="stone-thumb" src="${s.coverImage}">` : `<div class="stone-thumb-ph">◈</div>`;
     const shots = s.shotsCount || 1;
-    row.innerHTML = `${thumb}<div class="stone-info"><div class="stone-name">${esc(s.name)}</div><div class="stone-meta">${shots} снимк${shots===1?'':shots<5?'а':'ов'}</div></div><button class="stone-del" onclick="delStone('${s.id}',event)">Удалить</button>`;
+    row.innerHTML = `${thumb}<div class="stone-info"><div class="stone-name">${esc(s.name)}</div><div class="stone-meta">${shots} снимк${shots===1?'':shots<5?'а':'ов'}</div></div><button class="stone-edit" onclick="editStone('${s.id}',event)">Изменить</button><button class="stone-del" onclick="delStone('${s.id}',event)">Удалить</button>`;
     list.appendChild(row);
   });
 }
@@ -595,5 +634,21 @@ function showVeil(msg) {
 }
 function hideVeil() { const el=document.getElementById('veil'); if(el) el.remove(); }
 </script>
+<div class="screen" id="editContacts">
+  <div class="list-header">
+    <div class="list-title" id="editStoneName" style="font-size:20px"></div>
+    <button class="list-back" onclick="goMyStones()">Отмена</button>
+  </div>
+  <div style="padding:0 20px 20px;overflow-y:auto;flex:1">
+    <input type="hidden" id="editStoneId">
+    <div style="font-size:13px;color:rgba(240,237,230,0.4);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Контакты</div>
+    <input class="field" id="editPhone" placeholder="Телефон: +7 999 000 00 00" autocomplete="off">
+    <input class="field" id="editTg" placeholder="Telegram: @username" autocomplete="off">
+    <input class="field" id="editEmail" placeholder="Email: email@example.com" autocomplete="off">
+    <input class="field" id="editSite" placeholder="Сайт: https://..." autocomplete="off">
+    <button class="add-save-btn" onclick="saveEditStone()">Сохранить</button>
+  </div>
+</div>
+
 </body>
 </html>
